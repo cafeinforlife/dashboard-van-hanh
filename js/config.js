@@ -1,7 +1,7 @@
 // Cấu hình chung — sửa file này rồi push lên GitHub là app tự cập nhật.
 export const CONFIG = {
   appName: 'Kiểm Kê Linh Kiện',
-  company: 'Kingsport · Xe điện Move',
+  company: 'Tập đoàn Đông Dương · Kingsport · Xe điện MOVE',
   version: '1.0.0',
 
   // URL Web App của Google Apps Script (xem backend/README.md).
@@ -11,12 +11,25 @@ export const CONFIG = {
   logos: {
     kingsport: 'assets/logo-kingsport.svg',
     move: 'assets/logo-xedienmove.svg',
+    dongduong: 'assets/logo-dongduong.svg',          // công ty mẹ
+    dongduongIcon: 'assets/logo-dongduong-icon.svg',
   },
+
+  // Icon ngành hàng: nhận theo nhóm hàng hoặc từ khóa trong tên hàng (không dấu)
+  categories: [
+    { key: 'xe-dien', label: 'Xe điện', words: ['xe may dien', 'xe dap dien', 'xe dien', 'move', 'xe lan dien'] },
+    { key: 'ghe-massage', label: 'Ghế massage', words: ['ghe massage', 'ghe mat xa'] },
+    { key: 'may-chay-bo', label: 'Máy chạy bộ', words: ['may chay bo', 'bang tai', 'chay bo'] },
+    { key: 'xe-dap-tap', label: 'Xe đạp tập', words: ['xe dap tap', 'xe dap the duc', 'xe dap'] },
+    { key: 'sung-massage', label: 'Súng massage', words: ['sung massage', 'may massage cam tay', 'massage'] },
+    { key: 'may-do-huyet-ap', label: 'Thiết bị sức khỏe', words: ['huyet ap', 'can suc khoe', 'nhiet ke', 'may do'] },
+  ],
 
   // Bảng màu có sẵn. "kingsport" là mặc định cho giao diện sáng.
   // TODO: xác nhận mã màu Kingsport (MOVE đã theo Brand Guideline 2026).
   palettes: {
     kingsport: { name: 'Kingsport', primary: '#E30613', accent: '#1F2A44' },
+    dongduong: { name: 'Đông Dương', primary: '#DE3024', accent: '#4392D4' },
     // Theo MOVE Brand Guideline 2026: MOVE Red #BE0000, Black #0B1718, Purple #A331F4
     move:      { name: 'MOVE Red', primary: '#BE0000', accent: '#0B1718' },
     movePurple:{ name: 'MOVE Purple', primary: '#A331F4', accent: '#0B1718' },

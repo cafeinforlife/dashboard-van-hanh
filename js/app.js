@@ -12,6 +12,8 @@ let cleanup = null;
 
 /* ================= Khung giao diện ================= */
 const logos = () => `
+  <img src="${CONFIG.logos.dongduongIcon}" alt="Tập đoàn Đông Dương" title="Tập đoàn Đông Dương" class="logo logo-dd">
+  <span class="logo-sep"></span>
   <img src="${CONFIG.logos.kingsport}" alt="Kingsport" class="logo" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'logo-txt',textContent:'KINGSPORT'}))">
   <span class="logo-sep"></span>
   <img src="${CONFIG.logos.move}" alt="Xe điện Move" class="logo" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'logo-txt alt',textContent:'MOVE'}))">`;
@@ -55,6 +57,15 @@ window.addEventListener('queuechange', () => {
   el.textContent = `⟳ ${q}`; el.classList.toggle('hide', !q);
 });
 
+// Icon ngành hàng (ảnh mặt nạ, tô theo màu chủ đạo)
+const catOf = (name, category) => {
+  const f = fold(`${category || ''} ${name || ''}`);
+  return CONFIG.categories.find((c) => c.key === category || c.words.some((w) => f.includes(w)));
+};
+function catIcon(name, category) {
+  const c = catOf(name, category);
+  return c ? `<i class="cat" title="${esc(c.label)}" style="--ic:url(${new URL(`assets/icons/${c.key}.png`, location.href).href})"></i>` : '';
+}
 const locName = (m, code) => m.locations.find((l) => l.code === code)?.name || code || '';
 const active = (r) => !(r.active === false || String(r.active).toLowerCase() === 'false');
 const loading = () => { app.innerHTML = '<div class="center-load"><div class="spinner"></div></div>'; };
@@ -92,7 +103,9 @@ function viewLogin() {
   app.innerHTML = `
   <div class="login">
     <div class="login-card">
-      <div class="login-logos">${logos()}</div>
+      <img src="${CONFIG.logos.dongduong}" alt="Tập đoàn Đông Dương" class="login-parent">
+      <div class="login-logos">${logos().replace(/^[\s\S]*?logo-sep"><\/span>/, '')}</div>
+      <div class="cat-strip">${CONFIG.categories.map((c) => catIcon('', c.key)).join('')}</div>
       <h1>${esc(CONFIG.appName)}</h1>
       <p class="muted">Kiểm kê linh kiện tại chi nhánh bằng camera</p>
       <form id="f">
@@ -364,7 +377,7 @@ async function viewCount(id) {
       .filter((r) => st.filter === 'all' || (st.filter === 'done' ? r.got >= num(r.qty) : r.got < num(r.qty)));
     $('#lst').innerHTML = rows.length ? `<div class="item-list">${rows.slice(0, 300).map((r) => `
       <button class="item-row" data-sku="${esc(r.sku)}" ${closed ? 'disabled' : ''}>
-        <div><b class="mono">${esc(r.sku)}</b><small>${esc(r.name)}${r.bin ? ' · ' + esc(r.bin) : ''}</small></div>
+        <div><b class="mono">${catIcon(r.name, itemBy.get(r.sku)?.category)}${esc(r.sku)}</b><small>${esc(r.name)}${r.bin ? ' · ' + esc(r.bin) : ''}</small></div>
         <span class="qty ${r.got === num(r.qty) ? 'ok' : r.got > num(r.qty) ? 'over' : r.got ? 'short' : ''}">${fmt(r.got)}<small>/${fmt(r.qty)}</small></span>
       </button>`).join('')}</div>` : '<div class="empty">Không có mã nào.</div>';
   };
@@ -553,6 +566,7 @@ async function viewReport(id) {
   loading();
   const [m, { session, expected, counts }] = await Promise.all([Store.master(), Store.getSession(id)]);
   const { rows, summary: s } = reconcile(expected, counts, m.items);
+  const itemCat = new Map(m.items.map((i) => [i.sku, i.category]));
   const staffNames = session.team || [...new Set(counts.map((c) => c.staff).filter(Boolean))].join(', ');
   const closed = session.status === 'closed';
   let filter = '';
@@ -596,7 +610,7 @@ async function viewReport(id) {
     const list = rows.filter((r) => (!filter || r.status === filter) && (!q || fold(r.sku + ' ' + r.name).includes(q)))
       .sort((a, b) => Math.abs(b.value) - Math.abs(a.value) || Math.abs(b.diff) - Math.abs(a.diff));
     $('#tbl').innerHTML = `<table class="tbl"><thead><tr><th>Mã hàng</th><th>Tên hàng</th><th class="r">Sổ sách</th><th class="r">Thực tế</th><th class="r">Chênh lệch</th><th class="r">Giá trị CL</th><th>Kết quả</th></tr></thead>
-      <tbody>${list.map((r) => `<tr><td class="mono">${esc(r.sku)}</td><td>${esc(r.name)}<small class="muted">${r.bin ? ' · ' + esc(r.bin) : ''}</small></td>
+      <tbody>${list.map((r) => `<tr><td class="mono">${catIcon(r.name, itemCat.get(r.sku))}${esc(r.sku)}</td><td>${esc(r.name)}<small class="muted">${r.bin ? ' · ' + esc(r.bin) : ''}</small></td>
         <td class="r">${fmt(r.exp)}</td><td class="r">${fmt(r.got)}</td><td class="r ${r.diff < 0 ? 'neg' : r.diff > 0 ? 'pos' : ''}">${r.diff > 0 ? '+' : ''}${fmt(r.diff)}</td>
         <td class="r ${r.value < 0 ? 'neg' : r.value > 0 ? 'pos' : ''}">${r.value ? fmt(r.value) : ''}</td>
         <td><span class="badge st-${STATUS[r.status].cls}">${STATUS[r.status].label}</span></td></tr>`).join('') || '<tr><td colspan="7" class="empty">Không có dòng nào</td></tr>'}</tbody></table>`;

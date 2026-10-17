@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 320" width="100%" height="100%">
+  <!-- Red Sun -->
+  <circle cx="250" cy="142" r="86" fill="#de3024" />
+
+  <!-- Mountain Peak with White Separation Stroke -->
+  <polygon points="32,295 250,156 468,295" fill="#4392d4" stroke="#ffffff" stroke-width="8" stroke-linejoin="round" />
+</svg>

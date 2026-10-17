@@ -107,11 +107,18 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
   background: var(--surface); border-bottom: 3px solid var(--primary);
 }
 .brand { display: flex; align-items: center; gap: 10px; }
-.logo { height: 26px; width: auto; display: block; }
+.logo { height: 30px; width: auto; display: block; }
 :root[data-theme="dark"] .logo { background: #fff; padding: 3px 6px; border-radius: 6px; box-sizing: content-box; }
 .logo-txt { font-weight: 900; color: var(--primary); letter-spacing: .02em; }
 .logo-txt.alt { color: var(--accent); font-style: italic; }
 :root[data-theme="dark"] .logo-txt.alt { color: var(--text); }
+.logo-dd { height: 30px; }
+.cat { display: inline-block; width: 1.25em; height: 1.25em; margin-right: 6px; vertical-align: -0.28em; background: var(--primary);
+  -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
+.login-parent { height: 64px; margin: 0 auto 6px; display: block; }
+:root[data-theme="dark"] .login-parent { background: #fff; border-radius: 10px; padding: 4px 8px; }
+.cat-strip { display: flex; justify-content: center; gap: 14px; margin: 4px 0 14px; font-size: 1.4rem; }
+.cat-strip .cat { margin: 0; opacity: .85; }
 .logo-sep { width: 1px; height: 22px; background: var(--line); }
 .topnav { display: flex; gap: 4px; margin-left: 12px; }
 .topnav a { color: var(--muted); font-weight: 500; padding: 8px 12px; border-radius: 8px; }
