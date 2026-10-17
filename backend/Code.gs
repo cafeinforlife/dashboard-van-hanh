@@ -191,7 +191,7 @@ function sheet_(name) {
   const cols = TABLES[name];
   if (!sh) {
     sh = ss.insertSheet(name);
-    sh.getRange(1, 1, 1, cols.length).setValues([cols]).setFontWeight('bold').setBackground('#E30613').setFontColor('#ffffff');
+    sh.getRange(1, 1, 1, cols.length).setValues([cols]).setFontWeight('bold').setBackground('#CC2338').setFontColor('#ffffff');
     sh.setFrozenRows(1);
     // Cột chữ để dạng Text để mã "00123" không bị mất số 0, ngày không bị đổi định dạng
     cols.forEach((c, i) => { if (NUMERIC.indexOf(c) < 0) sh.getRange(2, i + 1, sh.getMaxRows() - 1, 1).setNumberFormat('@'); });

@@ -14,9 +14,10 @@ let cleanup = null;
 const logos = () => `
   <img src="${CONFIG.logos.dongduongIcon}" alt="Tập đoàn Đông Dương" title="Tập đoàn Đông Dương" class="logo logo-dd">
   <span class="logo-sep"></span>
-  <img src="${CONFIG.logos.kingsport}" alt="Kingsport" class="logo" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'logo-txt',textContent:'KINGSPORT'}))">
+  <img src="${CONFIG.logos.kingsport}" alt="Kingsport" class="logo only-light">
+  <img src="${CONFIG.logos.kingsportDark}" alt="Kingsport" class="logo only-dark">
   <span class="logo-sep"></span>
-  <img src="${CONFIG.logos.move}" alt="Xe điện Move" class="logo" onerror="this.replaceWith(Object.assign(document.createElement('b'),{className:'logo-txt alt',textContent:'MOVE'}))">`;
+  <img src="${CONFIG.logos.move}" alt="Xe điện MOVE" class="logo logo-move">`;
 
 function shell(active, title, inner) {
   const u = Store.user;

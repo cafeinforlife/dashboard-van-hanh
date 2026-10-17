@@ -1,6 +1,6 @@
 /* ===== Màu & token ===== */
 :root {
-  --primary: #E30613;
+  --primary: #CC2338;
   --accent: #1F2A44;
   --bg: #F2F2F2;
   --surface: #FFFFFF;
@@ -108,15 +108,13 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 }
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo { height: 30px; width: auto; display: block; }
-:root[data-theme="dark"] .logo { background: #fff; padding: 3px 6px; border-radius: 6px; box-sizing: content-box; }
-.logo-txt { font-weight: 900; color: var(--primary); letter-spacing: .02em; }
-.logo-txt.alt { color: var(--accent); font-style: italic; }
-:root[data-theme="dark"] .logo-txt.alt { color: var(--text); }
+.logo-move { height: 24px; }
+:root[data-theme="dark"] .logo-move { filter: invert(1); } /* MOVE bảng âm: logo trắng trên nền tối */
+:root:not([data-theme="dark"]) .only-dark, :root[data-theme="dark"] .only-light { display: none; }
 .logo-dd { height: 30px; }
 .cat { display: inline-block; width: 1.25em; height: 1.25em; margin-right: 6px; vertical-align: -0.28em; background: var(--primary);
   -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }
 .login-parent { height: 64px; margin: 0 auto 6px; display: block; }
-:root[data-theme="dark"] .login-parent { background: #fff; border-radius: 10px; padding: 4px 8px; }
 .cat-strip { display: flex; justify-content: center; gap: 14px; margin: 4px 0 14px; font-size: 1.4rem; }
 .cat-strip .cat { margin: 0; opacity: .85; }
 .logo-sep { width: 1px; height: 22px; background: var(--line); }
@@ -164,7 +162,9 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 .login-card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--primary); border-radius: 18px; padding: 28px 24px; box-shadow: var(--shadow); text-align: center; }
 .login-card form { text-align: left; margin-top: 18px; }
 .login-logos { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 18px; }
-.login-logos .logo { height: 32px; }
+.login-logos { flex-wrap: wrap; }
+.login-logos .logo { height: 24px; max-width: 100%; }
+.login-logos .logo-move { height: 18px; }
 .hint { background: var(--surface-2); border-radius: 8px; padding: 8px; font-size: .85rem; }
 
 /* ===== Danh sách đợt ===== */
@@ -288,7 +288,10 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 /* ===== Mobile ===== */
 @media (max-width: 760px) {
   .topnav, .who { display: none; }
-  .logo { height: 22px; }
+  .logo { height: 18px; }
+  .logo-dd { height: 20px; }
+  .logo-move { height: 13px; }
+  .brand { gap: 6px; min-width: 0; }
   .grid-2 { grid-template-columns: 1fr; }
   .page { padding-top: 12px; }
   .bottomnav {

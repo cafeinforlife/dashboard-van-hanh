@@ -22,7 +22,7 @@ Vai trò: **Quản trị** (toàn quyền) · **Quản lý** (tạo/chốt đợ
 ## Tùy biến nhanh
 | Muốn đổi | Sửa ở |
 |---|---|
-| Logo | Thay `assets/logo-kingsport.svg`, `assets/logo-xedienmove.svg` (hoặc file PNG rồi sửa đường dẫn trong `js/config.js`) |
+| Logo | `assets/` (logo gốc Kingsport, MOVE, Đông Dương) — đường dẫn trong `js/config.js` → `logos` |
 | Màu thương hiệu, bộ màu | `js/config.js` → `palettes` |
 | Cột file mẫu & tên cột tự nhận diện | `js/config.js` → `template` |
 | Độ nhạy OCR | `js/config.js` → `ocr` |

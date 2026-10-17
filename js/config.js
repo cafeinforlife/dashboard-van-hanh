@@ -9,8 +9,10 @@ export const CONFIG = {
   apiUrl: '',
 
   logos: {
-    kingsport: 'assets/logo-kingsport.svg',
-    move: 'assets/logo-xedienmove.svg',
+    // Logo gốc tải từ kingsport.vn (/logo/LOGO-2.svg) và xedienmove.vn (logo-footer.png)
+    kingsport: 'assets/logo-kingsport.svg',          // chữ đen — giao diện sáng
+    kingsportDark: 'assets/logo-kingsport-dark.svg', // chữ trắng — giao diện tối (bản gốc)
+    move: 'assets/logo-xedienmove.png',              // tối màu trên nền sáng; nền tối tự đảo trắng (bảng âm)
     dongduong: 'assets/logo-dongduong.svg',          // công ty mẹ
     dongduongIcon: 'assets/logo-dongduong-icon.svg',
   },
@@ -26,9 +28,10 @@ export const CONFIG = {
   ],
 
   // Bảng màu có sẵn. "kingsport" là mặc định cho giao diện sáng.
-  // TODO: xác nhận mã màu Kingsport (MOVE đã theo Brand Guideline 2026).
+  // Kingsport: màu primary trên kingsport.vn. MOVE: Brand Guideline 2026.
   palettes: {
-    kingsport: { name: 'Kingsport', primary: '#E30613', accent: '#1F2A44' },
+    kingsport: { name: 'Kingsport', primary: '#CC2338', accent: '#1A1A1A' },
+    kingsportGold: { name: 'Kingsport Vàng', primary: '#CC2338', accent: '#B08D00' },
     dongduong: { name: 'Đông Dương', primary: '#DE3024', accent: '#4392D4' },
     // Theo MOVE Brand Guideline 2026: MOVE Red #BE0000, Black #0B1718, Purple #A331F4
     move:      { name: 'MOVE Red', primary: '#BE0000', accent: '#0B1718' },

@@ -4,21 +4,25 @@ Người dùng: ASM vận hành khu vực Đông Nam Bộ (giao hàng, bảo hà
 
 ## Hệ sinh thái thương hiệu
 - **Tập đoàn Đông Dương** (Cty TNHH XNK Phát Triển Đông Dương, MST 0310037930) — công ty mẹ. Logo: mặt trời đỏ `#DE3024` + núi xanh `#4392D4` (`assets/logo-dongduong*.svg`, file gốc người dùng cung cấp).
-- **Kingsport** — 16+ năm; ghế massage, máy chạy bộ, xe đạp tập, súng massage, thiết bị sức khỏe. Logo: vương miện + chữ KINGSPORT (chữ I là hình người chạy) + slogan "CUỘC SỐNG GIÀU HẠNH PHÚC". `assets/logo-kingsport.svg` hiện là bản DỰNG LẠI theo tem — chờ file gốc. Mã màu web chưa xác minh (tạm `#E30613`). Hotline tem: 028-22 37 70 84.
-- **MOVE (xedienmove.vn)** — thương hiệu xe điện thuộc Đông Dương. Brand Guideline 2026: MOVE Red `#BE0000`, Black `#0B1718`, White, Purple `#A331F4`, Neutral `#6D6D6D`, Neutral Lighter `#F2F2F2`; font Mona Sans (tiêu đề), Josefin Sans (nội dung); favicon = nền đỏ + logomark trắng. Logo: ô vuông bo góc + wordmark MOVE. `assets/logo-xedienmove.svg` là bản DỰNG LẠI — chờ file gốc.
+- **Kingsport** — 16+ năm; ghế massage, máy chạy bộ, xe đạp tập, súng massage, thiết bị sức khỏe. Logo GỐC từ kingsport.vn `/logo/LOGO-2.svg`: vương miện vàng + chữ KINGSPORT (chữ I là người chạy), bản gốc chữ trắng → `assets/logo-kingsport-dark.svg`; bản chữ `#1A1A1A` cho nền sáng → `assets/logo-kingsport.svg`. Màu web (CSS Tailwind `primary`): đỏ `#CC2338`, vàng `#FCD205`/`#B08D00`, đen `#1A1A1A`, nền `#F4F4F4`. Hotline tem: 028-22 37 70 84.
+- **MOVE (xedienmove.vn)** — thương hiệu xe điện thuộc Đông Dương. Brand Guideline 2026: MOVE Red `#BE0000`, Black `#0B1718`, White, Purple `#A331F4`, Neutral `#6D6D6D`, Neutral Lighter `#F2F2F2`; font Mona Sans (tiêu đề), Josefin Sans (nội dung); favicon = nền đỏ + logomark trắng. Logo GỐC từ xedienmove.vn `assets/catalog/logo/logo-footer.png` → `assets/logo-xedienmove.png` (đen; nền tối dùng CSS invert = bảng âm). Web `theme-color` = `#BE0000`.
 
-## Xe điện MOVE (theo tìm kiếm web 10/2026 — giá có thể đổi, cần đối chiếu)
-| Mẫu | Loại | Giá niêm yết |
-|---|---|---|
-| Boss, Mission (BST Smart MOVE, ra mắt Vietnam Cycle Expo 08/2026) | XMĐ hiệu năng cao | 54 tr |
-| Thinking | XMĐ cao cấp | 39 tr |
-| Target S | XMĐ | 36,5 tr |
-| Isabella | XMĐ | 19,9 tr |
-| Athena Pro | XMĐ phổ thông | 14,99 tr (ắc quy 60V20Ah ~90 km) / 20,9 tr (pin LFP 2,5 kWh ~200 km) |
-| Athena | XMĐ phổ thông | 14,5 tr |
-| Mentor | XMĐ | 10,9 tr |
-| 911 (16,5 tr, 90 km), 007, E6 Pro, 946 | Xe đạp điện | 7,9–17 tr |
-Athena Pro: motor hub 1000W (max 1600W), 45 km/h, bánh 10", khóa NFC, cốp 15 L. Dòng cao cấp dùng pin LFP bảo hành 10 năm; chính sách "bảo hành tại nhà".
+## Xe điện MOVE (lấy trực tiếp từ trang chủ xedienmove.vn, 17/10/2026)
+| Mẫu | Loại | Giá niêm yết | Quãng đường | Công suất | Vận tốc |
+|---|---|---|---|---|---|
+| BOSS | XMĐ (BST Smart MOVE) | 54.000.000 | 180 km | 3000W | 85 km/h |
+| MISSION | XMĐ (BST Smart MOVE) | 54.000.000 | 180 km | 3000W | 85 km/h |
+| THINKING | XMĐ | 39.000.000 | 200 km | 3000W | 85 km/h |
+| TARGET S | XMĐ | 39.000.000 | 200 km | 3000W | 85 km/h |
+| TARGET | XMĐ | 36.500.000 | 250 km | 1500W | 50 km/h |
+| ISABELLA | XMĐ | 19.900.000 | 90 km | 800W | 50 km/h |
+| ATHENA PRO | XMĐ | 14.990.000 (ắc quy) | 90 km | 1000W | 45 km/h |
+| ATHENA | XMĐ | 14.500.000 | 80 km | 500W | 45 km/h |
+| MENTOR | XMĐ | 14.700.000 | 80 km | 500W | 45 km/h |
+| SPORT | XMĐ | 10.900.000 | 70 km | 500W | 45 km/h |
+| STRONGER PRO | XMĐ | 10.500.000 | 80 km | 350W | 45 km/h |
+| MOVE946 / 911 / 007 / E6 Pro / 133 | Xe đạp điện trợ lực | 15,8 / 16,5 / 13,9 / 10,8 / 11,5 tr | E6 Pro 80 km | E6 Pro 220W | 25 km/h |
+Athena Pro bản pin LFP 2,5 kWh ~200 km, ~20,9 tr (theo tìm kiếm). Dòng cao cấp pin LFP bảo hành 10 năm; "bảo hành tại nhà". Hệ thống cửa hàng MOVE trải từ phía Bắc (Tuyên Quang, Sơn La, Yên Bái, Thái Nguyên, Lạng Sơn, Hạ Long…).
 Thẻ giá xe (hangtag) KHÔNG có mã hàng → kiểm kê xe nên quét số khung/số máy hoặc tem serial.
 
 ## Dữ liệu ERP (Business Central / NAV)
@@ -31,4 +35,4 @@ Thẻ giá xe (hangtag) KHÔNG có mã hàng → kiểm kê xe nên quét số k
 - Frontend tĩnh (vanilla JS module), GitHub Pages; backend Google Apps Script + Sheets (`backend/Code.gs`), chế độ DEMO dùng localStorage.
 - OCR: Tesseract.js, nhị phân Otsu KHÔNG tự đảo màu (tem trắng trên thân máy đen), lượt 2 ảnh xám; so khớp mờ + chuỗi con + model trong tên hàng.
 - Icon ngành hàng `assets/icons/*.png` (mặt nạ alpha, tô màu bằng CSS mask) — người dùng cung cấp.
-- Sandbox không truy cập trực tiếp kingsport.vn / xedienmove.vn (DNS bị chặn); chỉ dùng được WebSearch.
+- Đã mở mạng cho kingsport.vn, xedienmove.vn (17/10/2026) → tải trực tiếp bằng curl được.
