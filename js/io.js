@@ -15,22 +15,42 @@ export async function readSheet(file) {
   return X().utils.sheet_to_json(ws, { header: 1, defval: '', raw: true, blankrows: false });
 }
 
-// Tìm dòng tiêu đề + tự nhận diện cột theo bảng tên tương đương
+// Tìm dòng tiêu đề + tự nhận diện cột theo bảng tên tương đương.
+// Hỗ trợ tiêu đề song ngữ nhiều dòng kiểu báo cáo ERP: "Mã hàng (Item)", "Số lượng cuối kỳ (Ending Balance)".
+const EXCLUDE = { qty: ['dau ky', 'beginning', 'nhap', 'xuat', 'input', 'output', 'in period', 'minimum'] };
+const headKey = (cell) => ' ' + fold(cell).replace(/[^a-z0-9]+/g, ' ').trim() + ' ';
+
+function scoreHeader(h, field, names) {
+  if ((EXCLUDE[field] || []).some((x) => h.includes(' ' + x + ' '))) return Infinity;
+  let best = Infinity;
+  names.forEach((a, i) => {
+    const t = ' ' + a + ' ';
+    const s = h === t ? 0 : h.startsWith(t) ? 0.3 : h.includes(t) ? 0.6 : Infinity;
+    best = Math.min(best, i + s);
+  });
+  return best;
+}
+
 export function detectColumns(rows, aliases = CONFIG.template.aliases) {
   let best = { row: 0, map: {}, hits: 0 };
-  rows.slice(0, 15).forEach((r, ri) => {
-    const map = {}; let hits = 0;
-    r.forEach((cell, ci) => {
-      const f = fold(cell).replace(/[^a-z0-9 ]/g, '').trim();
-      if (!f) return;
-      for (const [field, names] of Object.entries(aliases)) {
-        if (map[field] != null) continue;
-        if (names.includes(f)) { map[field] = ci; hits++; break; }
-      }
-    });
+  rows.slice(0, 20).forEach((r, ri) => {
+    const heads = r.map(headKey);
+    const cands = [];
+    for (const [field, names] of Object.entries(aliases))
+      heads.forEach((h, ci) => { if (h.trim()) { const sc = scoreHeader(h, field, names); if (sc < Infinity) cands.push([sc, field, ci]); } });
+    cands.sort((a, b) => a[0] - b[0]);
+    const map = {}, used = new Set();
+    for (const [, field, ci] of cands) if (map[field] == null && !used.has(ci)) { map[field] = ci; used.add(ci); }
+    const hits = Object.keys(map).length + (map.sku != null ? 2 : 0);
     if (hits > best.hits) best = { row: ri, map, hits };
   });
-  return { headerRow: best.row, map: best.map, headers: rows[best.row] || [] };
+  // Mã kho ghi ở phần đầu báo cáo, VD "Kho (Location): BR01"
+  let warehouse = '';
+  for (const r of rows.slice(0, best.row + 3)) for (const c of r) {
+    const m = String(c).match(/(?:kho|location)[^:]*:\s*([A-Z0-9_.-]{2,})/i);
+    if (m && !warehouse) warehouse = m[1].toUpperCase();
+  }
+  return { headerRow: best.row, map: best.map, headers: (rows[best.row] || []).map((h) => String(h).replace(/\s+/g, ' ').trim()), warehouse };
 }
 
 // Chuyển dòng thô → bản ghi theo map cột. Gộp các mã trùng (cộng số lượng).
@@ -156,11 +176,11 @@ export function exportReport({ session, locationName, rows, summary, counts, sta
   ws2['!autofilter'] = { ref: `A1:K${body.length + 1}` };
 
   const ws3 = XL.utils.aoa_to_sheet([
-    ['Thời gian', 'Mã hàng', 'Tên hàng', 'SL', 'Cách ghi nhận', 'Người quét', 'Nhân sự', 'Trong DS', 'Văn bản OCR', 'Ghi chú'],
-    ...[...counts].sort((a, b) => a.ts - b.ts).map((c) => [fmtDate(c.ts), c.sku, c.name, num(c.qty),
+    ['Thời gian', 'Mã hàng', 'Tên hàng', 'SL', 'Serial', 'Cách ghi nhận', 'Người quét', 'Nhân sự', 'Trong DS', 'Văn bản OCR', 'Ghi chú'],
+    ...[...counts].sort((a, b) => a.ts - b.ts).map((c) => [fmtDate(c.ts), c.sku, c.name, num(c.qty), c.serial || '',
       c.method === 'ocr' ? 'Camera OCR' : 'Nhập tay', c.user, c.staff, c.in_list ? 'Có' : 'Không', c.raw, c.note]),
   ]);
-  ws3['!cols'] = [16, 18, 34, 6, 13, 14, 18, 8, 30, 20].map((wch) => ({ wch }));
+  ws3['!cols'] = [16, 18, 34, 6, 16, 13, 14, 18, 8, 30, 20].map((wch) => ({ wch }));
 
   const wb = XL.utils.book_new();
   XL.utils.book_append_sheet(wb, ws1, 'Tong hop');

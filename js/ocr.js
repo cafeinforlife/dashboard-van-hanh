@@ -49,13 +49,19 @@ export class Camera {
     c.width = Math.round(sw * k); c.height = Math.round(sh * k);
     const ctx = c.getContext('2d', { willReadFrequently: true });
     ctx.drawImage(v, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    // Bản xám (không nhị phân) dùng cho lượt đọc thứ 2 khi nền màu / tương phản thấp
+    const g = document.createElement('canvas'); g.width = c.width; g.height = c.height;
+    const gctx = g.getContext('2d', { willReadFrequently: true });
+    gctx.drawImage(c, 0, 0);
+    preprocess(gctx, g.width, g.height, false);
     preprocess(ctx, c.width, c.height);
+    c.alt = g;
     return c;
   }
 }
 
-// Xám hóa → kéo giãn tương phản → nhị phân hóa Otsu (tự đảo màu nếu chữ sáng trên nền tối)
-export function preprocess(ctx, w, h) {
+// Xám hóa → kéo giãn tương phản → nhị phân hóa Otsu
+export function preprocess(ctx, w, h, binarize = true) {
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
   const gray = new Uint8ClampedArray(w * h);
@@ -78,11 +84,10 @@ export function preprocess(ctx, w, h) {
     const between = wB * wF * (mB - mF) ** 2;
     if (between > best) { best = between; thr = t; }
   }
-  let dark = 0; for (let j = 0; j < gray.length; j++) if (gray[j] < thr) dark++;
-  const invert = dark > gray.length / 2; // đa số pixel tối → nền tối, chữ sáng
+  // Không tự đảo màu: tem trắng dán trên thân máy màu đen sẽ bị đảo sai.
+  // Tesseract tự xử lý được dòng chữ sáng trên nền tối.
   for (let i = 0, j = 0; i < d.length; i += 4, j++) {
-    let b = gray[j] < thr ? 0 : 255;
-    if (invert) b = 255 - b;
+    const b = binarize ? (gray[j] < thr ? 0 : 255) : gray[j];
     d[i] = d[i + 1] = d[i + 2] = b; d[i + 3] = 255;
   }
   ctx.putImageData(img, 0, 0);
@@ -135,6 +140,21 @@ function lev(a, b) {
 }
 const sim = (a, b) => 1 - lev(a, b) / Math.max(a.length, b.length);
 
+// Khoảng cách sửa nhỏ nhất của mã `a` so với một đoạn bất kỳ trong chuỗi `b`
+// (dùng khi OCR dính liền nhiều chữ: "B10KMCOT10PRD" chứa "KMC0T10PRD").
+function semiLev(a, b) {
+  const m = a.length, n = b.length;
+  let prev = new Array(n + 1).fill(0);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++)
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return Math.min(...prev);
+}
+const bigrams = (s) => { const o = new Set(); for (let i = 0; i < s.length - 1; i++) o.add(s.slice(i, i + 2)); return o; };
+
 // Tách văn bản OCR thành các "ứng viên": từng từ, cặp từ liền kề, cả dòng.
 export function tokens(text) {
   const out = new Set();
@@ -157,14 +177,31 @@ export function tokens(text) {
 export function buildIndex(entries) {
   return entries.map((e) => {
     const keys = [e.sku, ...(e.keys || [])].map(normCode).filter((k) => k.length >= 3);
-    return { ...e, nkeys: keys, skeys: keys.map(skel) };
+    const skeys = keys.map(skel);
+    return { ...e, nkeys: keys, skeys, bkeys: skeys.map((k) => [...bigrams(k)]) };
   });
+}
+
+// Thêm mã phụ vào 1 mục của chỉ mục (dùng khi app vừa học được mã tem mới)
+export function addKey(entry, key) {
+  const k = normCode(key);
+  if (k.length < 3 || entry.nkeys.includes(k)) return;
+  const sk = skel(k);
+  entry.nkeys.push(k); entry.skeys.push(sk); entry.bkeys.push([...bigrams(sk)]);
+}
+
+// Chuỗi trông giống mã hàng trong văn bản OCR (có cả chữ và số, ≥6 ký tự, không phải serial)
+export function codeLike(text) {
+  return String(text).toUpperCase().split(/\s+/).map(normCode)
+    .filter((w) => w.length >= 6 && /\d/.test(w) && /[A-Z]/.test(w) && !findSerial(w))
+    .sort((a, b) => b.length - a.length)[0] || '';
 }
 
 export function matchText(text, index, limit = 5) {
   const toks = tokens(text);
   if (!toks.length) return [];
   const stoks = toks.map(skel);
+  const btoks = stoks.map(bigrams);
   const res = [];
   for (const it of index) {
     let best = 0;
@@ -175,12 +212,40 @@ export function matchText(text, index, limit = 5) {
         if (t === k) s = 1;
         else if (stoks[ti] === sk) s = 0.96;
         else if (k.length >= 5 && stoks[ti].includes(sk)) s = 0.93; // mã nằm trong chuỗi dài hơn
-        else if (Math.abs(t.length - k.length) <= 3) s = sim(stoks[ti], sk) * 0.95;
-        else s = 0;
+        else {
+          s = Math.abs(t.length - k.length) <= 3 ? sim(stoks[ti], sk) * 0.95 : 0;
+          // Mã nằm lẫn trong chuỗi dài, có lỗi nhận dạng: lọc nhanh bằng cặp ký tự trước khi tính
+          if (k.length >= 6 && t.length > k.length) {
+            const bk = it.bkeys[ki];
+            let hit = 0; for (const g of bk) if (btoks[ti].has(g)) hit++;
+            if (hit >= bk.length * 0.5) s = Math.max(s, (1 - semiLev(sk, stoks[ti]) / k.length) * 0.92);
+          }
+        }
         if (s > best) best = s;
       });
     });
     if (best >= CONFIG.ocr.minScore) res.push({ ...it, score: Math.min(1, best + (it.expected ? 0.02 : 0)) });
   }
   return res.sort((a, b) => b.score - a.score || (b.expected - a.expected)).slice(0, limit);
+}
+
+// Mã phụ suy ra từ tên hàng trong ERP: "… model: G89NEW (KMCVG89T5NGY)" → G89NEW, KMCVG89T5NGY.
+// Giúp nhận đúng khi tem in tên model thay vì mã hệ thống (VD tem "PREMIUM B10" ↔ mã KMC0B10T1PRD).
+export function modelKeys(name) {
+  const s = String(name || '');
+  const out = [];
+  const m = s.match(/model\s*:?\s*([^,(;]+)/i);
+  if (m) out.push(m[1]);
+  for (const p of s.matchAll(/\(([A-Za-z0-9-]{5,})\)/g)) out.push(p[1]);
+  return out.map(normCode).filter((k) => k.length >= 4);
+}
+
+// Số serial trên tem dán (VD 302510280211, OYL2604220077): 0–4 chữ cái + ≥9 chữ số.
+export function findSerial(text) {
+  for (const w of String(text).toUpperCase().split(/\s+/)) {
+    const t = w.replace(/[^A-Z0-9]/g, '');
+    const m = t.match(/^([A-Z]{0,4})([0-9OIL]{9,15})$/);
+    if (m) return m[1] + m[2].replace(/O/g, '0').replace(/[IL]/g, '1');
+  }
+  return '';
 }

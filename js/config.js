@@ -30,13 +30,14 @@ export const CONFIG = {
   // các tên tương đương ở "aliases" sẽ được tự nhận diện khi import.
   template: {
     columns: ['Mã hàng', 'Tên hàng', 'ĐVT', 'Số lượng tồn', 'Đơn giá', 'Vị trí', 'Ghi chú'],
+    // Thứ tự = độ ưu tiên. Đã gồm tên cột báo cáo Nhập-Xuất-Tồn và bảng giá xuất từ ERP (Business Central).
     aliases: {
-      sku:   ['ma hang', 'ma', 'ma sp', 'ma linh kien', 'ma vat tu', 'ma vt', 'sku', 'code', 'item code', 'part no', 'part number'],
-      name:  ['ten hang', 'ten', 'ten sp', 'ten linh kien', 'ten vat tu', 'mo ta', 'description', 'name'],
-      unit:  ['dvt', 'don vi', 'don vi tinh', 'unit', 'uom'],
-      qty:   ['so luong ton', 'so luong', 'sl', 'sl ton', 'ton', 'ton kho', 'ton so sach', 'qty', 'quantity'],
-      price: ['don gia', 'gia', 'gia von', 'price', 'unit price'],
-      bin:   ['vi tri', 'ke', 'vi tri ke', 'bin', 'location'],
+      sku:   ['ma hang', 'ma sp', 'ma san pham', 'ma linh kien', 'ma vat tu', 'ma vt', 'product no', 'item no', 'sku', 'code', 'item code', 'part no', 'part number', 'ma', 'item'],
+      name:  ['ten hang', 'ten quy cach', 'ten sp', 'ten san pham', 'ten linh kien', 'ten vat tu', 'item description', 'description', 'mo ta', 'name', 'ten'],
+      unit:  ['dvt', 'don vi tinh', 'don vi', 'unit of measure code', 'unit of measure', 'uom', 'unit'],
+      qty:   ['so luong cuoi ky', 'ton cuoi ky', 'ending balance', 'so luong ton', 'sl ton', 'ton kho', 'ton so sach', 'so luong', 'sl', 'ton', 'qty', 'quantity'],
+      price: ['don gia', 'unit price', 'gia ban', 'gia von', 'gia', 'price'],
+      bin:   ['vi tri', 'vi tri ke', 'ke', 'bin', 'location'],
       note:  ['ghi chu', 'note', 'notes'],
     },
   },

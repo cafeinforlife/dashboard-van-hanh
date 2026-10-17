@@ -7,11 +7,12 @@ const TABLES = {
   locations: ['code', 'name', 'region', 'address', 'manager', 'active'],
   items:     ['sku', 'name', 'unit', 'category', 'price', 'barcode', 'alias'],
   staff:     ['code', 'name', 'phone', 'location', 'title', 'active'],
+  aliases:   ['alias', 'sku', 'created_by', 'ts'], // mã in trên tem ↔ mã hệ thống (app tự học)
   sessions:  ['id', 'name', 'location', 'date', 'status', 'team', 'note', 'created_by', 'created_at', 'closed_at'],
   expected:  ['session_id', 'sku', 'name', 'unit', 'qty', 'price', 'bin', 'note'],
-  counts:    ['id', 'session_id', 'sku', 'name', 'qty', 'method', 'raw', 'user', 'staff', 'bin', 'note', 'ts', 'in_list'],
+  counts:    ['id', 'session_id', 'sku', 'name', 'qty', 'method', 'raw', 'user', 'staff', 'bin', 'note', 'ts', 'in_list', 'serial'],
 };
-const MASTER = ['users', 'locations', 'items', 'staff'];
+const MASTER = ['users', 'locations', 'items', 'staff', 'aliases'];
 const NUMERIC = ['qty', 'price', 'ts', 'created_at', 'closed_at'];
 const TOKEN_TTL = 21600; // 6 giờ, tự gia hạn mỗi lần gọi
 
@@ -52,7 +53,7 @@ const ACTIONS = {
   getMaster() {
     return {
       users: readTable_('users').map(publicUser_),
-      locations: readTable_('locations'), items: readTable_('items'), staff: readTable_('staff'),
+      locations: readTable_('locations'), items: readTable_('items'), staff: readTable_('staff'), aliases: readTable_('aliases'),
     };
   },
 
@@ -118,6 +119,16 @@ const ACTIONS = {
       });
       appendRows_('counts', rows);
       return { ok: true, added: rows.length };
+    });
+  },
+
+  addAlias(req, user) {
+    return withLock_(() => {
+      const alias = String(req.alias || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      if (alias.length < 4 || !req.sku) throw new Error('Mã tem không hợp lệ');
+      deleteWhere_('aliases', (r) => r.alias === alias);
+      appendRows_('aliases', [{ alias, sku: req.sku, created_by: user.username, ts: Date.now() }]);
+      return { ok: true };
     });
   },
 

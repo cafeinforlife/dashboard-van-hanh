@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { Store, ROLES } from './store.js';
 import { applyTheme, getTheme, setTheme } from './theme.js';
-import { Camera, initOcr, ocrReady, recognize, buildIndex, matchText } from './ocr.js';
+import { Camera, initOcr, ocrReady, recognize, buildIndex, matchText, modelKeys, findSerial, addKey, codeLike } from './ocr.js';
 import { readSheet, detectColumns, rowsToRecords, downloadTemplate, reconcile, exportReport, exportTable, STATUS } from './io.js';
 import { $, $$, esc, fold, num, fmt, fmtMoney, fmtDate, pct, uid, toast, modal, confirmBox, beep, debounce, ls } from './util.js';
 
@@ -227,7 +227,7 @@ async function viewNew() {
   const drawPreview = () => {
     if (!parsed) return;
     $('#mapping').innerHTML = `
-      <p class="ok-text">✔ ${esc(parsed.fileName)} — dòng tiêu đề: ${parsed.headerRow + 1}</p>
+      <p class="ok-text">✔ ${esc(parsed.fileName)} — dòng tiêu đề: ${parsed.headerRow + 1}${parsed.warehouse ? ` — kho <b>${esc(parsed.warehouse)}</b>` : ''}</p>
       <div class="map-grid">${FIELDS.map(([k, l]) => `
         <label>${l}<select data-k="${k}"><option value="">— không có —</option>
         ${parsed.headers.map((h, i) => `<option value="${i}" ${parsed.map[k] === i ? 'selected' : ''}>${esc(h || `Cột ${i + 1}`)}</option>`).join('')}</select></label>`).join('')}</div>`;
@@ -257,6 +257,10 @@ async function viewNew() {
       const rows = await readSheet(file);
       const det = detectColumns(rows);
       parsed = { rows, ...det, fileName: file.name };
+      if (det.warehouse && locs.some((l) => l.code === det.warehouse) && f.location.value !== det.warehouse) {
+        f.location.value = det.warehouse; syncName();
+        toast(`Đã chọn địa điểm theo mã kho ${det.warehouse} trong file`, 'info');
+      }
       drawPreview();
     } catch (e) { toast('Không đọc được file: ' + e.message, 'error'); }
   };
@@ -290,10 +294,12 @@ async function viewCount(id) {
   const counts = data.counts;
   const itemBy = new Map(m.items.map((i) => [i.sku, i]));
   const expBy = new Map(expected.map((e) => [e.sku, e]));
-  const keysOf = (sku) => { const it = itemBy.get(sku); return it ? [it.barcode, ...String(it.alias || '').split(/[,;|]/)].filter(Boolean) : []; };
+  const learned = new Map();
+  for (const a of m.aliases || []) learned.set(a.sku, [...(learned.get(a.sku) || []), a.alias]);
+  const keysOf = (sku, name) => { const it = itemBy.get(sku); return [it?.barcode, ...String(it?.alias || '').split(/[,;|]/), ...modelKeys(it?.name || name), ...(learned.get(sku) || [])].filter(Boolean); };
   const index = buildIndex([
-    ...expected.map((e) => ({ sku: e.sku, name: e.name || itemBy.get(e.sku)?.name || '', keys: keysOf(e.sku), expected: true })),
-    ...m.items.filter((i) => !expBy.has(i.sku)).map((i) => ({ sku: i.sku, name: i.name, keys: keysOf(i.sku), expected: false })),
+    ...expected.map((e) => ({ sku: e.sku, name: e.name || itemBy.get(e.sku)?.name || '', keys: keysOf(e.sku, e.name), expected: true })),
+    ...m.items.filter((i) => !expBy.has(i.sku)).map((i) => ({ sku: i.sku, name: i.name, keys: keysOf(i.sku, i.name), expected: false })),
   ]);
   const closed = session.status === 'closed';
   const team = String(session.team || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -367,7 +373,7 @@ async function viewCount(id) {
     const rows = [...counts].sort((a, b) => b.ts - a.ts);
     $('#log').innerHTML = rows.length ? `<div class="item-list">${rows.slice(0, 200).map((c) => `
       <div class="item-row">
-        <div><b class="mono">${esc(c.sku)}</b> ${c.in_list ? '' : '<span class="pill pill-warn">Ngoài DS</span>'}<small>${esc(c.name)} · ${fmtDate(c.ts)} · ${esc(c.staff || c.user)} · ${c.method === 'ocr' ? '📷' : '⌨'}</small></div>
+        <div><b class="mono">${esc(c.sku)}</b> ${c.in_list ? '' : '<span class="pill pill-warn">Ngoài DS</span>'}<small>${c.serial ? `SN ${esc(c.serial)} · ` : ''}${esc(c.name)} · ${fmtDate(c.ts)} · ${esc(c.staff || c.user)} · ${c.method === 'ocr' ? '📷' : '⌨'}</small></div>
         <span class="qty">+${fmt(c.qty)}</span>
         ${closed ? '' : `<button class="icon-btn" data-del="${esc(c.id)}" title="Xóa lượt này">🗑</button>`}
       </div>`).join('')}</div>` : '<div class="empty">Chưa có lượt quét nào.</div>';
@@ -375,11 +381,17 @@ async function viewCount(id) {
 
   const redraw = () => { drawStats(); if (st.tab === 'list') drawList(); if (st.tab === 'log') drawLog(); };
 
-  async function addCount(sku, qty, method, raw = '') {
+  async function addCount(sku, qty, method, raw = '', serial = '') {
+    serial = String(serial || '').trim().toUpperCase();
+    const dupe = serial && counts.find((c) => c.serial === serial);
+    if (dupe) {
+      if (st.auto) { toast(`Serial ${serial} đã quét rồi — bỏ qua`, 'warn'); return; }
+      if (!await confirmBox('Serial đã được quét', `Serial ${serial} đã ghi nhận lúc ${fmtDate(dupe.ts)} bởi ${dupe.staff || dupe.user} (mã ${dupe.sku}). Vẫn ghi nhận thêm?`, 'Vẫn ghi', true)) return;
+    }
     if (!st.staff) toast('Nên chọn "Người kiểm" để báo cáo rõ trách nhiệm', 'warn');
     const e = expBy.get(sku), it = itemBy.get(sku);
     const c = {
-      id: uid('C'), session_id: id, sku, name: e?.name || it?.name || '', qty: num(qty), method, raw: String(raw).slice(0, 120),
+      id: uid('C'), session_id: id, sku, name: e?.name || it?.name || '', qty: num(qty), method, raw: String(raw).slice(0, 120), serial,
       user: Store.user.username, staff: st.staff, bin: e?.bin || '', note: '', ts: Date.now(), in_list: !!e,
     };
     counts.push(c);
@@ -399,7 +411,11 @@ async function viewCount(id) {
       ${raw ? `<p class="tiny muted">Văn bản đọc được: <code>${esc(raw.replace(/\s+/g, ' ').slice(0, 100))}</code></p>` : ''}
       <input id="mq" placeholder="Tìm mã / tên hàng…" autocomplete="off" autocapitalize="characters">
       <div id="mc" class="cand-list"></div>
+      <label>Số serial (nếu có tem serial)<input id="mser" value="${esc(findSerial(raw))}" autocapitalize="characters" placeholder="VD: OYL2604220077"></label>
       <label>Số lượng<div class="stepper"><button type="button" data-s="-1">−</button><input id="mqty" type="number" inputmode="decimal" step="any" min="0" value="${defQty}"><button type="button" data-s="1">＋</button></div></label>`;
+    const tem = method === 'ocr' ? codeLike(raw) : '';
+    if (tem && (!cands[0] || cands[0].score < 0.95)) body.insertAdjacentHTML('beforeend',
+      `<label class="switch learn"><input type="checkbox" id="mlearn" checked><span>Ghi nhớ: tem in <code>${esc(tem)}</code> = mã đã chọn (lần sau nhận ngay)</span></label>`);
     let sel = cands[0]?.sku || '';
     const drawC = (list) => {
       $('#mc', body).innerHTML = list.length ? list.map((c) => `
@@ -427,10 +443,15 @@ async function viewCount(id) {
       title: method === 'ocr' ? 'Kết quả nhận diện' : 'Nhập mã hàng',
       body,
       actions: [{ label: 'Hủy', value: null }, {
-        label: 'Ghi nhận', value: () => ({ sku: sel || $('#mq', body).value.trim().toUpperCase(), qty: $('#mqty', body).value }),
+        label: 'Ghi nhận', value: () => ({ sku: sel || $('#mq', body).value.trim().toUpperCase(), qty: $('#mqty', body).value, serial: $('#mser', body).value, learn: $('#mlearn', body)?.checked }),
       }],
     });
-    if (r?.sku && num(r.qty) > 0) await addCount(r.sku, r.qty, method, raw);
+    if (r?.learn && r.sku && tem && tem !== r.sku.replace(/[^A-Z0-9]/g, '')) {
+      const entry = index.find((i) => i.sku === r.sku);
+      if (entry) addKey(entry, tem);
+      Store.addAlias(tem, r.sku).then(() => toast(`Đã ghi nhớ tem ${tem} → ${r.sku}`, 'ok')).catch((e) => toast('Chưa lưu được mã tem: ' + e.message, 'warn'));
+    }
+    if (r?.sku && num(r.qty) > 0) await addCount(r.sku, r.qty, method, raw, r.serial);
   }
 
   async function scanOnce() {
@@ -444,15 +465,20 @@ async function viewCount(id) {
       $('#cam').classList.add('busy');
       const canvas = cam.capture();
       if (!canvas) return;
-      const { text } = await recognize(canvas);
-      const cands = matchText(text, index);
+      let { text } = await recognize(canvas);
+      let cands = matchText(text, index);
+      if (!cands.length && canvas.alt) { // lượt 2: ảnh xám cho nền màu / chữ mờ
+        const r2 = await recognize(canvas.alt);
+        const c2 = matchText(r2.text, index);
+        if (c2.length || !text.trim()) { text = r2.text; cands = c2; }
+      }
       const top = cands[0];
       $('#ocrOut').innerHTML = `<img src="${canvas.toDataURL('image/png')}" alt=""><div><small class="muted">OCR:</small> <code>${esc(text.trim().replace(/\s+/g, ' ').slice(0, 80) || '(không đọc được)')}</code>
         ${top ? `<br><b class="mono">${esc(top.sku)}</b> <small>${Math.round(top.score * 100)}%</small>` : ''}</div>`;
       if (st.auto) {
         const clear = top && top.score >= CONFIG.ocr.autoAcceptScore && (!cands[1] || top.score - cands[1].score >= 0.05);
         const cooldown = st.last && st.last.sku === top?.sku && Date.now() - st.last.ts < 3000;
-        if (clear && !cooldown) await addCount(top.sku, num($('#defQty').value) || 1, 'ocr', text);
+        if (clear && !cooldown) await addCount(top.sku, num($('#defQty').value) || 1, 'ocr', text, findSerial(text));
         msg.textContent = 'Quét liên tục — đưa mã hàng vào khung';
       } else {
         msg.textContent = 'Đưa mã hàng vào khung';
@@ -604,6 +630,7 @@ const ADMIN = {
   locations: { title: 'Địa điểm', key: 'code', cols: [['code', 'Mã'], ['name', 'Tên chi nhánh'], ['region', 'Khu vực'], ['address', 'Địa chỉ'], ['manager', 'Phụ trách'], ['active', 'Hoạt động', 'bool']] },
   items: { title: 'Hàng hóa / linh kiện', key: 'sku', cols: [['sku', 'Mã hàng'], ['name', 'Tên hàng'], ['unit', 'ĐVT'], ['category', 'Nhóm hàng'], ['price', 'Đơn giá', 'num'], ['barcode', 'Mã vạch / mã phụ'], ['alias', 'Mã khác (cách nhau dấu ,)']] },
   staff: { title: 'Nhân sự kiểm kê', key: 'code', cols: [['code', 'Mã NV'], ['name', 'Họ tên'], ['phone', 'SĐT'], ['location', 'Chi nhánh', 'loc'], ['title', 'Chức danh'], ['active', 'Hoạt động', 'bool']] },
+  aliases: { title: 'Mã tem đã học', key: 'alias', cols: [['alias', 'Chữ in trên tem'], ['sku', 'Mã hàng hệ thống'], ['created_by', 'Người dạy']] },
   users: { title: 'Tài khoản', key: 'username', cols: [['username', 'Tài khoản'], ['fullname', 'Họ tên'], ['role', 'Vai trò', 'role'], ['location', 'Chi nhánh', 'loc'], ['active', 'Hoạt động', 'bool'], ['password', 'Mật khẩu mới', 'pw']] },
 };
 
@@ -683,7 +710,8 @@ async function viewAdmin(tab = 'items') {
       const aliases = Object.fromEntries(def.cols.map(([k, l]) => [k, [fold(l).replace(/[^a-z0-9 ]/g, '').trim(), k, ...(tab === 'items' ? CONFIG.template.aliases[k] || [] : [])]]));
       const { headerRow, map } = detectColumns(raw, aliases);
       if (map[def.key] == null) throw new Error(`Không thấy cột "${def.cols[0][1]}"`);
-      let added = 0, updated = 0;
+      let added = 0, updated = 0, dupes = 0;
+      const seen = new Set();
       for (const line of raw.slice(headerRow + 1)) {
         const rec = {};
         for (const [k, , t] of def.cols) {
@@ -693,11 +721,13 @@ async function viewAdmin(tab = 'items') {
           rec[k] = v;
         }
         if (!rec[def.key]) continue;
+        if (seen.has(String(rec[def.key]))) { dupes++; continue; } // bảng giá nhiều nhóm giá: lấy dòng đầu
+        seen.add(String(rec[def.key]));
         const ex = rows.find((r) => String(r[def.key]) === String(rec[def.key]));
         if (ex) { Object.assign(ex, rec); updated++; } else { rows.push({ ...Object.fromEntries(def.cols.map(([k, , t]) => [k, t === 'bool' ? true : t === 'role' ? 'staff' : ''])), ...rec }); added++; }
       }
       dirty = true; draw();
-      toast(`Đã nhập: ${added} mới, ${updated} cập nhật. Bấm Lưu để ghi.`, 'ok', 4000);
+      toast(`Đã nhập: ${added} mới, ${updated} cập nhật${dupes ? `, bỏ ${dupes} dòng trùng mã` : ''}. Bấm Lưu để ghi.`, 'ok', 5000);
     } catch (err) { toast(err.message, 'error'); }
   };
   $('#save').onclick = async () => {

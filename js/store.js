@@ -9,11 +9,12 @@ export const TABLES = {
   locations: ['code', 'name', 'region', 'address', 'manager', 'active'],
   items:     ['sku', 'name', 'unit', 'category', 'price', 'barcode', 'alias'],
   staff:     ['code', 'name', 'phone', 'location', 'title', 'active'],
+  aliases:   ['alias', 'sku', 'created_by', 'ts'], // mã in trên tem ↔ mã hệ thống (app tự học)
   sessions:  ['id', 'name', 'location', 'date', 'status', 'team', 'note', 'created_by', 'created_at', 'closed_at'],
   expected:  ['session_id', 'sku', 'name', 'unit', 'qty', 'price', 'bin', 'note'],
-  counts:    ['id', 'session_id', 'sku', 'name', 'qty', 'method', 'raw', 'user', 'staff', 'bin', 'note', 'ts', 'in_list'],
+  counts:    ['id', 'session_id', 'sku', 'name', 'qty', 'method', 'raw', 'user', 'staff', 'bin', 'note', 'ts', 'in_list', 'serial'],
 };
-export const MASTER_TABLES = ['users', 'locations', 'items', 'staff'];
+export const MASTER_TABLES = ['users', 'locations', 'items', 'staff', 'aliases'];
 export const ROLES = { admin: 'Quản trị', manager: 'Quản lý', staff: 'Nhân viên kiểm kê' };
 
 const K_DB = 'kk_db_v1', K_AUTH = 'kk_auth', K_QUEUE = 'kk_queue', K_API = 'kk_api_url';
@@ -76,7 +77,14 @@ const demo = {
   },
   async getMaster() {
     const d = await db();
-    return { users: d.users.map(publicUser), locations: d.locations, items: d.items, staff: d.staff };
+    return { users: d.users.map(publicUser), locations: d.locations, items: d.items, staff: d.staff, aliases: d.aliases };
+  },
+  async addAlias({ alias, sku }) {
+    const d = await db();
+    d.aliases = d.aliases.filter((a) => a.alias !== alias);
+    d.aliases.push({ alias, sku, created_by: Store.user?.username, ts: Date.now() });
+    saveDb();
+    return { ok: true };
   },
   async saveTable({ table, rows }) {
     if (!MASTER_TABLES.includes(table)) throw new Error('Bảng không hợp lệ');
@@ -212,6 +220,10 @@ export const Store = {
   updateSession: (id, patch) => impl().updateSession({ id, patch }),
   deleteSession: (id) => impl().deleteSession({ id }),
   deleteCount: (id) => impl().deleteCount({ id }),
+  async addAlias(alias, sku) {
+    await impl().addAlias({ alias, sku });
+    if (this._master) this._master.aliases = [...(this._master.aliases || []).filter((a) => a.alias !== alias), { alias, sku }];
+  },
 
   async getSession(id) {
     const r = await impl().getSession({ id });
