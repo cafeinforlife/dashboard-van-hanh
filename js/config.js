@@ -14,10 +14,12 @@ export const CONFIG = {
   },
 
   // Bảng màu có sẵn. "kingsport" là mặc định cho giao diện sáng.
-  // TODO: đối chiếu lại mã màu chính xác từ bộ nhận diện thương hiệu Kingsport / Move.
+  // TODO: xác nhận mã màu Kingsport (MOVE đã theo Brand Guideline 2026).
   palettes: {
     kingsport: { name: 'Kingsport', primary: '#E30613', accent: '#1F2A44' },
-    move:      { name: 'Xe điện Move', primary: '#00A651', accent: '#0B3B2E' },
+    // Theo MOVE Brand Guideline 2026: MOVE Red #BE0000, Black #0B1718, Purple #A331F4
+    move:      { name: 'MOVE Red', primary: '#BE0000', accent: '#0B1718' },
+    movePurple:{ name: 'MOVE Purple', primary: '#A331F4', accent: '#0B1718' },
     ocean:     { name: 'Xanh biển', primary: '#0B6BCB', accent: '#0F2A4A' },
     sunset:    { name: 'Cam năng động', primary: '#F26A21', accent: '#3A2416' },
     violet:    { name: 'Tím', primary: '#6D4AFF', accent: '#231A4A' },

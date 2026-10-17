@@ -2,18 +2,18 @@
 :root {
   --primary: #E30613;
   --accent: #1F2A44;
-  --bg: #F4F5F7;
+  --bg: #F2F2F2;
   --surface: #FFFFFF;
   --surface-2: #F8F9FB;
-  --text: #1A1D24;
-  --muted: #6B7280;
+  --text: #0B1718;
+  --muted: #6D6D6D;
   --line: #E4E6EB;
   --ok: #12A150;
   --warn: #D97706;
   --bad: #DC2626;
   --info: #2563EB;
   --none: #9CA3AF;
-  --extra: #7C3AED;
+  --extra: #A331F4;
   --primary-soft: color-mix(in srgb, var(--primary) 10%, var(--surface));
   --accent-soft: color-mix(in srgb, var(--accent) 10%, var(--surface));
   --on-primary: #fff;
@@ -52,6 +52,7 @@ a { color: var(--primary); text-decoration: none; }
 h1 { font-size: 1.35rem; margin: 0; letter-spacing: -.01em; }
 h2 { font-size: 1.05rem; margin: 0 0 12px; }
 h3 { font-size: 1rem; margin: 6px 0 2px; }
+h1, h2, h3, .kpi b, .btn-primary { font-family: 'Mona Sans', 'Be Vietnam Pro', system-ui, sans-serif; }
 code, .mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
 .muted { color: var(--muted); }
 .tiny { font-size: .78rem; }
