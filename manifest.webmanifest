@@ -1,0 +1,9 @@
+{
+  "name": "Kiểm Kê Linh Kiện - Kingsport",
+  "short_name": "Kiểm kê",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#E30613",
+  "icons": [{ "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
