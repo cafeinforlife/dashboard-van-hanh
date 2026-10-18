@@ -15,6 +15,13 @@ Webapp kiểm kê linh kiện tại chi nhánh: dùng **camera iPhone + nhận d
 
 Vai trò: **Quản trị** (toàn quyền) · **Quản lý** (tạo/chốt đợt, báo cáo) · **Nhân viên kiểm kê** (quét).
 
+## Bản cá nhân (mặc định)
+Không cài máy chủ → app chạy **Bản cá nhân**: mở link, nhập tên + chọn kho là dùng, không cần tài khoản.
+- Dữ liệu lưu trên chính máy đó; **sao lưu / khôi phục** bằng file trong Cài đặt.
+- Có sẵn 300 địa điểm và 6.274 mã hàng (không kèm đơn giá — nhập bảng giá trong Danh mục nếu cần tính giá trị chênh lệch).
+- Toàn bộ thư viện nằm trong `vendor/` → sau lần mở đầu tiên **chạy được khi mất mạng**.
+- iPhone: mở bằng Safari → Chia sẻ → **Thêm vào MH chính** (bắt buộc nên làm: Safari có thể xóa dữ liệu web không dùng sau 7 ngày nếu không thêm vào màn hình chính).
+
 ## Triển khai miễn phí
 1. **Frontend – GitHub Pages**: merge code vào nhánh `main` → Settings → Pages → Source: **GitHub Actions**. Link dạng `https://<user>.github.io/dashboard-van-hanh/` (https — bắt buộc để iPhone mở camera).
 2. **Backend – Google Sheets**: xem [backend/README.md](backend/README.md). Chưa cài backend thì app chạy **chế độ DEMO** (dữ liệu lưu trên trình duyệt; tài khoản `admin / admin123`).

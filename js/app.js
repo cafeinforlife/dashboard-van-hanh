@@ -33,7 +33,7 @@ function shell(active, title, inner) {
     <a href="#/" class="brand">${logos()}</a>
     <nav class="topnav">${nav.map(([h, , l, k]) => `<a href="${h}" class="${k === active ? 'on' : ''}">${l}</a>`).join('')}</nav>
     <div class="top-right">
-      ${Store.mode === 'demo' ? '<span class="pill pill-warn" title="Dữ liệu chỉ lưu trên máy này">DEMO</span>' : ''}
+      ${Store.personal ? '<span class="pill pill-warn" title="Dữ liệu lưu trên máy này — nhớ sao lưu định kỳ">BẢN CÁ NHÂN</span>' : ''}
       <span class="pill pill-info sync ${q ? '' : 'hide'}" title="Lượt quét chờ đồng bộ">⟳ ${q}</span>
       <button class="icon-btn" id="themeToggle" title="Đổi sáng/tối">◐</button>
       <span class="who"><b>${esc(u?.fullname || u?.username)}</b><small>${esc(ROLES[u?.role] || '')}</small></span>
@@ -85,6 +85,7 @@ const errorView = (e) => { app.innerHTML = shell('', 'Có lỗi', `<div class="c
 /* ================= Router ================= */
 const routes = [
   [/^#\/login$/, viewLogin, true],
+  [/^#\/setup$/, viewSetup, true],
   [/^#\/?$/, viewHome],
   [/^#\/new$/, viewNew, false, 'manage'],
   [/^#\/s\/([^/]+)\/count$/, viewCount],
@@ -99,7 +100,7 @@ async function route() {
   for (const [re, fn, pub, perm] of routes) {
     const m = hash.match(re);
     if (!m) continue;
-    if (!pub && !Store.user) { location.hash = '#/login'; return; }
+    if (!pub && !Store.user) { location.hash = Store.personal ? '#/setup' : '#/login'; return; }
     if (perm && !Store.can(perm)) { location.hash = '#/'; return; }
     try { await fn(...m.slice(1)); } catch (e) { console.error(e); errorView(e); }
     window.scrollTo(0, 0);
@@ -110,7 +111,37 @@ async function route() {
 window.addEventListener('hashchange', route);
 
 /* ================= Đăng nhập ================= */
+/* ================= Bản cá nhân: không đăng nhập, chỉ hỏi tên + kho ================= */
+async function viewSetup() {
+  if (!Store.personal) { location.hash = '#/login'; return; }
+  loading();
+  const m = await Store.master();
+  const u = Store.user;
+  app.innerHTML = `
+  <div class="login">
+    <div class="login-card">
+      <img src="${CONFIG.logos.dongduong}" alt="Tập đoàn Đông Dương" class="login-parent">
+      <div class="login-logos">${logos().replace(/^[\s\S]*?logo-sep"><\/span>/, '')}</div>
+      <h1>${esc(CONFIG.appName)}</h1>
+      <p class="muted">Bản cá nhân — dùng ngay, không cần tài khoản. Dữ liệu lưu trên máy này, chạy được cả khi mất mạng.</p>
+      <form id="f">
+        <label>Họ tên người kiểm kê<input name="n" required value="${esc(u?.fullname || '')}" placeholder="VD: Nguyễn Văn A" list="setupStaff" autocomplete="name">
+          <datalist id="setupStaff">${m.staff.filter(active).map((s) => `<option value="${esc(s.name)}">`).join('')}</datalist></label>
+        <label>Kho / cửa hàng của bạn<select name="l" required><option value="">— chọn —</option>${locOptions(m.locations.filter(active), u?.location)}</select></label>
+        <button class="btn btn-primary btn-block">${u ? 'Lưu' : 'Bắt đầu kiểm kê'}</button>
+      </form>
+      <p class="tiny muted">${esc(CONFIG.company)} · v${CONFIG.version}</p>
+    </div>
+  </div>`;
+  $('#f').addEventListener('submit', (e) => {
+    e.preventDefault();
+    Store.loginLocal(e.target.n.value, e.target.l.value);
+    location.hash = '#/';
+  });
+}
+
 function viewLogin() {
+  if (Store.personal) { location.hash = '#/setup'; return; }
   app.innerHTML = `
   <div class="login">
     <div class="login-card">
@@ -343,7 +374,7 @@ async function viewCount(id) {
   ]);
   const closed = session.status === 'closed';
   const team = String(session.team || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const st = { staff: ls.get('kk_staff_' + id, team[0] || ''), auto: false, busy: false, last: null, tab: 'scan', filter: 'todo' };
+  const st = { staff: ls.get('kk_staff_' + id, team[0] || (Store.user.username === 'local' ? Store.user.fullname : '')), auto: false, busy: false, last: null, tab: 'scan', filter: 'todo' };
 
   const gotOf = (sku) => counts.filter((c) => c.sku === sku).reduce((a, c) => a + num(c.qty), 0);
 
@@ -866,25 +897,31 @@ function viewSettings() {
       <div class="preview-strip"><span class="btn btn-primary">Nút chính</span><span class="pill pill-ok">Khớp</span><span class="pill pill-warn">Ngoài DS</span><span class="accent-chip">Màu phối</span></div>
     </section>
     <section class="card">
-      <h2>Tài khoản</h2>
-      <p><b>${esc(u.fullname || u.username)}</b> · ${esc(ROLES[u.role] || u.role)}</p>
-      <p class="muted">Tên đăng nhập: ${esc(u.username)}</p>
-      <button class="btn" id="logout">Đăng xuất</button>
+      <h2>${Store.personal ? 'Người kiểm kê' : 'Tài khoản'}</h2>
+      <p><b>${esc(u.fullname || u.username)}</b>${Store.personal ? ` · ${esc(u.location || '')}` : ` · ${esc(ROLES[u.role] || u.role)}`}</p>
+      ${Store.personal ? '<a class="btn" href="#/setup">Đổi tên / kho</a>' : `<p class="muted">Tên đăng nhập: ${esc(u.username)}</p><button class="btn" id="logout">Đăng xuất</button>`}
     </section>
-    <section class="card">
-      <h2>Máy chủ dữ liệu</h2>
+    ${Store.personal ? `<section class="card">
+      <h2>Sao lưu dữ liệu</h2>
+      <p class="muted">Dữ liệu bản cá nhân chỉ nằm trên máy này. Nên <b>sao lưu sau mỗi đợt kiểm kê</b> (gửi file qua Zalo/email cho chính mình) để không mất khi đổi máy hoặc xóa trình duyệt.</p>
+      <div class="row-btns"><button class="btn btn-primary" id="backup">⬇ Sao lưu ra file</button>
+        <label class="btn">⬆ Khôi phục từ file<input type="file" id="restore" accept=".json,application/json" hidden></label></div>
+      <p class="tiny muted" id="usage"></p>
+    </section>` : ''}
+    <details class="card">
+      <summary><b>Nâng cao: kết nối máy chủ dùng chung</b></summary>
       <p class="muted">Chế độ hiện tại: <b>${Store.mode === 'demo' ? 'DEMO (lưu trên máy này)' : 'Google Sheets'}</b>.
       Dán URL Web App của Google Apps Script để dùng chung dữ liệu cho mọi người (xem hướng dẫn trong README).</p>
       <label>URL Apps Script<input id="api" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(Store.apiUrl)}"></label>
       <div class="row-btns"><button class="btn btn-primary" id="saveApi">Lưu &amp; đăng nhập lại</button></div>
       ${Store.queue().length ? `<p class="warn-text">Còn ${Store.queue().length} lượt quét chưa đồng bộ.</p><button class="btn" id="flush">Đồng bộ ngay</button>` : ''}
-    </section>
+    </details>
     <section class="card">
       <h2>Mẹo dùng camera trên iPhone</h2>
       <ul class="tips">
         <li>Mở bằng <b>Safari</b>, bấm Chia sẻ → <b>Thêm vào MH chính</b> để dùng như app.</li>
         <li>Giữ mã hàng nằm ngang trong khung, cách 10–20 cm, đủ sáng, tránh lóa.</li>
-        <li>Lần đầu quét cần tải bộ nhận diện (~10 giây), các lần sau dùng bộ nhớ đệm.</li>
+        <li>Lần đầu mở app cần có mạng để tải app + bộ nhận diện (~12MB); sau đó <b>dùng được khi mất mạng</b>. Lần quét đầu tiên mất ~5–10 giây để khởi động.</li>
         <li>Bật <b>Quét liên tục</b> khi đếm nhiều linh kiện cùng mã: mỗi lần nhận diện chắc chắn sẽ tự cộng SL mặc định.</li>
         <li>Thêm mã vạch / mã phụ của nhà cung cấp vào Danh mục hàng hóa để tăng tỉ lệ nhận đúng.</li>
       </ul>
@@ -896,11 +933,34 @@ function viewSettings() {
   $('#cp').oninput = (e) => setTheme({ primary: e.target.value });
   $('#ca').oninput = (e) => setTheme({ accent: e.target.value });
   $('#reset').onclick = () => { setTheme({ mode: 'auto', palette: 'kingsport', primary: '', accent: '' }); viewSettings(); };
-  $('#logout').onclick = () => { Store.logout(); location.hash = '#/login'; };
-  $('#saveApi').onclick = () => { Store.setApiUrl($('#api').value); Store._master = null; location.hash = '#/login'; };
+  $('#logout')?.addEventListener('click', () => { Store.logout(); location.hash = '#/login'; });
+  $('#backup')?.addEventListener('click', async () => {
+    const data = JSON.stringify(await Store.exportAll());
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([data], { type: 'application/json' })),
+      download: `KiemKe_saoluu_${(u.location || 'may')}_${new Date().toISOString().slice(0, 10)}.json`,
+    });
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    toast('Đã tạo file sao lưu', 'ok');
+  });
+  $('#restore')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    try {
+      const backup = JSON.parse(await file.text());
+      const n = backup?.data?.sessions?.length ?? 0;
+      if (!await confirmBox('Khôi phục dữ liệu', `Thay toàn bộ dữ liệu trên máy này bằng file sao lưu (${n} đợt kiểm kê, ngày ${fmtDate(backup.exported_at)})?`, 'Khôi phục', true)) return;
+      await Store.importAll(backup);
+      toast('Đã khôi phục dữ liệu', 'ok'); location.hash = '#/';
+    } catch (err) { toast(err.message, 'error'); }
+  });
+  navigator.storage?.estimate?.().then(({ usage, quota }) => {
+    const el = $('#usage'); if (el && quota) el.textContent = `Đang dùng ${(usage / 1048576).toFixed(1)} MB bộ nhớ trình duyệt.`;
+  }).catch(() => {});
+  $('#saveApi').onclick = () => { Store.setApiUrl($('#api').value); Store._master = null; location.hash = Store.personal ? '#/setup' : '#/login'; };
   $('#flush')?.addEventListener('click', async () => { await Store.flush().catch((e) => toast(e.message, 'error')); viewSettings(); });
 }
 
 route();
 
-if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(() => {});

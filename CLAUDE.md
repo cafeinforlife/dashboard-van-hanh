@@ -37,7 +37,8 @@ Thẻ giá xe (hangtag) KHÔNG có mã hàng → kiểm kê xe nên quét số k
 - Tem trên máy có thể in mã KHÁC ERP (tem B10 in `KMC0T10PRD`) → dùng tính năng "học mã tem" (bảng `aliases`). Tem serial: `302510280211`, `OYL2604220077`.
 
 ## Kỹ thuật
-- Frontend tĩnh (vanilla JS module), GitHub Pages; backend Google Apps Script + Sheets (`backend/Code.gs`), chế độ DEMO dùng localStorage.
+- Frontend tĩnh (vanilla JS module), GitHub Pages (nhánh `gh-pages` = bản chạy, push cùng lúc với nhánh dev) + bản Artifact trên Claude để góp ý. Backend tùy chọn Google Apps Script + Sheets (`backend/Code.gs`).
+- BẢN CÁ NHÂN (mặc định khi không có apiUrl): không đăng nhập (hỏi tên + kho), localStorage, sao lưu/khôi phục JSON, offline nhờ `vendor/` (Tesseract 5.1.1 + core LSTM + eng best_int, SheetJS 0.18.5) và `sw.js` precache. `data/items.json` = 6.274 mã [mã, tên, ĐVT] KHÔNG có giá (repo public).
 - OCR: Tesseract.js, nhị phân Otsu KHÔNG tự đảo màu (tem trắng trên thân máy đen), lượt 2 ảnh xám. Đối chiếu 2 lớp: (1) so khớp mờ mã + chuỗi con + mã tem đã học; (2) nếu lớp 1 < 90%: NHÓM SẢN PHẨM trên tem (GHẾ MASSAGE…) + MÃ MODEL (B10, G89NEW…) → hàng cùng nhóm + model, ưu tiên hàng trong phiếu tồn kho, thành phẩm trước linh kiện; điểm tối đa 89% nên luôn để người kiểm chọn (không tự cộng ở chế độ quét liên tục).
 - Icon ngành hàng `assets/icons/` (mặt nạ alpha, tô màu bằng CSS mask): 5 PNG người dùng cung cấp + SVG tự vẽ: thiet-bi-y-te (máy đo huyết áp, xe lăn, giường điện/cơ, ghế bô, ghế tập đi), qua-tang (bóng/thảm yoga, con lăn bụng, áo trùm, áo mưa, nón BH, túi vải, bình giữ nhiệt…), hang-hoa (mặc định khi không xác định: bồn rửa, giàn tạ, tạ…). Quy tắc từ khóa ở `CONFIG.categories`.
 - Nhân sự: đồng bộ từ Google Sheet HR (link chỉ lưu trên máy/admin, KHÔNG commit — repo public, sheet có SĐT/email/ngày sinh). Chỉ lấy Mã NV, Họ tên, Chi nhánh, Bộ phận, Vị trí, Trạng thái. 66 dòng/45 đang làm, Bảo hành + Kho vận, Đông Nam Bộ 1–4. Người kiểm: chọn danh sách hoặc gõ tay.

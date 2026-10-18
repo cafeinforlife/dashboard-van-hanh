@@ -31,6 +31,16 @@ async function erpLocations() {
   return null;
 }
 
+// Danh mục hàng hóa đóng gói sẵn (data/items.json: [mã, tên, ĐVT], không kèm đơn giá)
+const ITEMS_VER = 1;
+async function erpItems() {
+  try {
+    const r = await fetch('data/items.json');
+    if (r.ok) return (await r.json()).map(([sku, name, unit]) => ({ sku, name, unit, category: '', price: '', barcode: '', alias: '' }));
+  } catch { /* offline */ }
+  return null;
+}
+
 async function seedDb() {
   const h = await sha256('admin:admin123');
   const locs = [
@@ -55,8 +65,8 @@ async function seedDb() {
   return {
     users: [{ username: 'admin', fullname: 'Quản trị hệ thống', role: 'admin', location: '', active: true, password_hash: h }],
     locations: (await erpLocations()) || locs.map(([code, name, region]) => ({ code, name, type: 'Kho', branch: '', region, address: '', manager: '', active: true })),
-    meta: { locVer: LOC_VER },
-    items: items.map(([sku, name, unit, category, price]) => ({ sku, name, unit, category, price, barcode: '', alias: '' })),
+    meta: { locVer: LOC_VER, itemsVer: ITEMS_VER },
+    items: (await erpItems()) || items.map(([sku, name, unit, category, price]) => ({ sku, name, unit, category, price, barcode: '', alias: '' })),
     staff: [], // đồng bộ từ Google Sheet nhân sự (Danh mục → Nhân sự)
     sessions: [], expected: [], counts: [],
   };
@@ -68,6 +78,7 @@ async function db() {
   _db = ls.get(K_DB) || await seedDb();
   for (const t of Object.keys(TABLES)) _db[t] ||= [];
   await migrateLocations(_db);
+  await migrateItems(_db);
   ls.set(K_DB, _db);
   return _db;
 }
@@ -86,6 +97,19 @@ async function migrateLocations(d) {
   for (const e of erp) by.set(e.code, { ...by.get(e.code), ...e });
   d.locations = [...by.values()];
   d.meta = { ...d.meta, locVer: LOC_VER };
+}
+
+// Máy đã dùng bản cũ: bổ sung danh mục đóng gói, giữ nguyên hàng người dùng đã nhập (có đơn giá)
+async function migrateItems(d) {
+  if ((d.meta?.itemsVer || 0) >= ITEMS_VER) return;
+  const erp = await erpItems();
+  if (!erp) return;
+  const used = new Set([...d.expected, ...d.counts].map((x) => x.sku));
+  const sample = /^(MCB|MSG|MV)-/;
+  const by = new Map(d.items.filter((i) => !(sample.test(i.sku) && !used.has(i.sku))).map((i) => [i.sku, i]));
+  for (const e of erp) if (!by.has(e.sku)) by.set(e.sku, e);
+  d.items = [...by.values()];
+  d.meta = { ...d.meta, itemsVer: ITEMS_VER };
 }
 
 const demo = {
@@ -215,6 +239,21 @@ export const Store = {
   get apiUrl() { return apiUrl(); },
   setApiUrl(u) { u ? ls.set(K_API, u.trim()) : ls.del(K_API); ls.del(K_AUTH); },
   get auth() { return ls.get(K_AUTH); },
+  // Bản cá nhân (không có máy chủ): không cần đăng nhập, dữ liệu lưu trên máy
+  get personal() { return this.mode === 'demo'; },
+  loginLocal(fullname, location) {
+    const user = { username: 'local', fullname: fullname.trim(), role: 'admin', location };
+    ls.set(K_AUTH, { token: 'local', user });
+    return user;
+  },
+  // Sao lưu / khôi phục toàn bộ dữ liệu bản cá nhân
+  async exportAll() { return { app: 'kiem-ke', version: 1, exported_at: Date.now(), data: await db() }; },
+  async importAll(backup) {
+    const d = backup?.data;
+    if (backup?.app !== 'kiem-ke' || !d || !Array.isArray(d.sessions) || !Array.isArray(d.items)) throw new Error('File sao lưu không hợp lệ');
+    for (const t of Object.keys(TABLES)) d[t] ||= [];
+    _db = d; saveDb(); this._master = null;
+  },
   get user() { return ls.get(K_AUTH)?.user || null; },
   can(perm) {
     const r = this.user?.role;
@@ -281,4 +320,6 @@ export const Store = {
 };
 
 setInterval(() => Store.flush().catch(() => {}), 15000);
+// Xin trình duyệt giữ dữ liệu lâu dài (hạn chế bị tự xóa khi máy thiếu bộ nhớ)
+navigator.storage?.persist?.().catch(() => {});
 window.addEventListener('online', () => Store.flush().catch(() => {}));

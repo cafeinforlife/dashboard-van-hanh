@@ -270,6 +270,8 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 .swatches small { width: 100%; font-size: .72rem; text-align: center; }
 .preview-strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
 .accent-chip { background: var(--accent); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: .85rem; font-weight: 600; }
+details.card > summary { cursor: pointer; margin-bottom: 8px; }
+details.card:not([open]) > summary { margin-bottom: 0; }
 .tips { padding-left: 18px; margin: 0; } .tips li { margin-bottom: 6px; }
 
 /* ===== Modal / toast ===== */
