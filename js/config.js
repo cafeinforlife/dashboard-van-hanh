@@ -20,15 +20,27 @@ export const CONFIG = {
   // Thứ tự khu vực trong danh sách địa điểm (khu vực phụ trách lên đầu)
   regionOrder: ['Đông Nam Bộ', 'TP.HCM', 'Tây Nguyên', 'Nam Trung Bộ', 'ĐB Sông Cửu Long', 'Miền Trung', 'Bắc Trung Bộ', 'Miền Bắc'],
 
-  // Icon ngành hàng: nhận theo nhóm hàng hoặc từ khóa trong tên hàng (không dấu)
+  // Icon ngành hàng: nhận theo nhóm hàng hoặc từ khóa trong tên hàng (không dấu).
+  // Thứ tự = ưu tiên (mục trên khớp trước). Không khớp mục nào → icon "Hàng hóa khác".
   categories: [
-    { key: 'xe-dien', label: 'Xe điện', words: ['xe may dien', 'xe dap dien', 'xe dien', 'move', 'xe lan dien'] },
+    { key: 'thiet-bi-y-te', label: 'Thiết bị y tế', file: 'thiet-bi-y-te.svg',
+      words: ['huyet ap', 'xe lan', 'giuong dien', 'giuong co', 'giuong y te', 'giuong benh', 'ghe bo', 'ghe tap di', 'khung tap di', 'nhiet ke', 'may do duong huyet', 'can suc khoe'] },
+    { key: 'qua-tang', label: 'Quà tặng', file: 'qua-tang.svg',
+      words: ['qua tang', 'bong yoga', 'tham yoga', 'yoga', 'con lan tap bung', 'con lan tro luc', 'con lan bung', 'ao trum', 'bat ao trum', 'ao mua', 'non bao hiem', 'mu bao hiem', 'tui vai', 'tui xach', 'binh giu nhiet', 'ly giu nhiet', 'coc giu nhiet', 'tham trai san', 'gift'] },
+    { key: 'xe-dien', label: 'Xe điện', words: ['xe may dien', 'xe dap dien', 'xe dien', 'move'] },
     { key: 'ghe-massage', label: 'Ghế massage', words: ['ghe massage', 'ghe mat xa'] },
     { key: 'may-chay-bo', label: 'Máy chạy bộ', words: ['may chay bo', 'bang tai', 'chay bo'] },
     { key: 'xe-dap-tap', label: 'Xe đạp tập', words: ['xe dap tap', 'xe dap the duc', 'xe dap'] },
     { key: 'sung-massage', label: 'Súng massage', words: ['sung massage', 'may massage cam tay', 'massage'] },
-    { key: 'may-do-huyet-ap', label: 'Thiết bị sức khỏe', words: ['huyet ap', 'can suc khoe', 'nhiet ke', 'may do'] },
   ],
+  otherCategory: { key: 'hang-hoa', label: 'Hàng hóa khác', file: 'hang-hoa.svg' },
+
+  // Nhân sự: đồng bộ từ Google Sheet (link nhập trong Danh mục → Nhân sự, KHÔNG lưu vào mã nguồn
+  // vì bảng có thông tin cá nhân). Tên cột tự nhận diện:
+  staffSheetColumns: {
+    code: ['ma nv', 'ma nhan vien', 'msnv', 'code'], name: ['ho va ten', 'ho ten', 'ten nhan vien', 'name'],
+    branch: ['chi nhanh'], dept: ['bo phan', 'phong ban'], title: ['vi tri', 'chuc danh', 'chuc vu'], status: ['trang thai'],
+  },
 
   // Bảng màu có sẵn. "kingsport" là mặc định cho giao diện sáng.
   // Kingsport: màu primary trên kingsport.vn. MOVE: Brand Guideline 2026.

@@ -53,6 +53,7 @@ export function toast(msg, type = 'info', ms = 2600) {
   el.className = `toast toast-${type}`;
   el.textContent = msg;
   box.append(el);
+  while (box.children.length > 3) box.firstElementChild.remove(); // tối đa 3 thông báo
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, ms);
 }
 

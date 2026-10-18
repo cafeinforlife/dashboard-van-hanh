@@ -8,7 +8,7 @@ export const TABLES = {
   users:     ['username', 'fullname', 'role', 'location', 'active', 'password_hash'],
   locations: ['code', 'name', 'type', 'branch', 'region', 'address', 'manager', 'active'], // mã = Location Code trong ERP
   items:     ['sku', 'name', 'unit', 'category', 'price', 'barcode', 'alias'],
-  staff:     ['code', 'name', 'phone', 'location', 'title', 'active'],
+  staff:     ['code', 'name', 'phone', 'location', 'branch', 'dept', 'title', 'active'],
   aliases:   ['alias', 'sku', 'created_by', 'ts'], // mã in trên tem ↔ mã hệ thống (app tự học)
   sessions:  ['id', 'name', 'location', 'date', 'status', 'team', 'note', 'created_by', 'created_at', 'closed_at'],
   expected:  ['session_id', 'sku', 'name', 'unit', 'qty', 'price', 'bin', 'note'],
@@ -57,10 +57,7 @@ async function seedDb() {
     locations: (await erpLocations()) || locs.map(([code, name, region]) => ({ code, name, type: 'Kho', branch: '', region, address: '', manager: '', active: true })),
     meta: { locVer: LOC_VER },
     items: items.map(([sku, name, unit, category, price]) => ({ sku, name, unit, category, price, barcode: '', alias: '' })),
-    staff: [
-      { code: 'NV01', name: 'Nguyễn Văn A', phone: '', location: 'BH01', title: 'Kỹ thuật viên', active: true },
-      { code: 'NV02', name: 'Trần Thị B', phone: '', location: 'BD01', title: 'Thủ kho', active: true },
-    ],
+    staff: [], // đồng bộ từ Google Sheet nhân sự (Danh mục → Nhân sự)
     sessions: [], expected: [], counts: [],
   };
 }

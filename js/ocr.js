@@ -23,6 +23,24 @@ export class Camera {
   }
 
   get torchSupported() { return !!this.track?.getCapabilities?.().torch; }
+
+  // Zoom: ưu tiên zoom phần cứng của camera (iPhone/Android hỗ trợ "zoom" trong MediaTrack);
+  // máy không hỗ trợ thì phóng to số (cắt ảnh) — vẫn đọc được nhưng kém nét hơn.
+  get hardwareZoom() { return !!this.track?.getCapabilities?.().zoom; }
+  zoomLevels() {
+    const z = this.track?.getCapabilities?.().zoom;
+    const max = z ? Math.min(z.max, 5) : 3;
+    return [1, 2, 3, 5].filter((x) => x <= max);
+  }
+  async setZoom(level) {
+    const z = this.track?.getCapabilities?.().zoom;
+    if (z) {
+      this.digital = 1; this.video.style.transform = '';
+      try { await this.track.applyConstraints({ advanced: [{ zoom: Math.max(z.min, Math.min(z.max, level)) }] }); return; } catch { /* rơi về zoom số */ }
+    }
+    this.digital = level;
+    this.video.style.transform = level > 1 ? `scale(${level})` : '';
+  }
   async torch(on) { try { await this.track.applyConstraints({ advanced: [{ torch: on }] }); return true; } catch { return false; } }
 
   stop() {
@@ -32,12 +50,15 @@ export class Camera {
   }
 
   // Cắt vùng khung ngắm (tỉ lệ theo khung hiển thị) và tiền xử lý ảnh
-  capture(box = { x: 0.08, y: 0.36, w: 0.84, h: 0.28 }) {
+  capture(box = { x: 0.06, y: 0.25, w: 0.88, h: 0.5 }) {
     const v = this.video;
     const vw = v.videoWidth, vh = v.videoHeight;
     if (!vw) return null;
     // Video hiển thị kiểu object-fit: cover → quy đổi vùng nhìn thấy sang tọa độ thật
-    const el = v.getBoundingClientRect();
+    // Kích thước khung hiển thị (không tính transform của zoom số)
+    const el = { width: v.offsetWidth, height: v.offsetHeight };
+    const dz = this.digital || 1;
+    if (dz > 1) box = { x: 0.5 + (box.x - 0.5) / dz, y: 0.5 + (box.y - 0.5) / dz, w: box.w / dz, h: box.h / dz };
     const scale = Math.max(el.width / vw, el.height / vh);
     const visW = el.width / scale, visH = el.height / scale;
     const offX = (vw - visW) / 2, offY = (vh - visH) / 2;

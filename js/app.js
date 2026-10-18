@@ -64,8 +64,8 @@ const catOf = (name, category) => {
   return CONFIG.categories.find((c) => c.key === category || c.words.some((w) => f.includes(w)));
 };
 function catIcon(name, category) {
-  const c = catOf(name, category);
-  return c ? `<i class="cat" title="${esc(c.label)}" style="--ic:url(${new URL(`assets/icons/${c.key}.png`, location.href).href})"></i>` : '';
+  const c = catOf(name, category) || CONFIG.otherCategory;
+  return `<i class="cat" title="${esc(c.label)}" style="--ic:url(${new URL(`assets/icons/${c.file || c.key + '.png'}`, location.href).href})"></i>`;
 }
 // Danh sách địa điểm nhóm theo khu vực · chi nhánh (hơn 300 kho/cửa hàng)
 function locOptions(locs, selected) {
@@ -206,7 +206,11 @@ async function viewNew() {
       <label>Tên đợt<input name="name" required></label>
       <label>Ngày kiểm kê<input type="date" name="date" value="${today}" required></label>
       <label>Ghi chú<textarea name="note" rows="2" placeholder="VD: Kiểm kê định kỳ cuối tháng"></textarea></label>
-      <div class="field"><span>Nhân sự tham gia</span><div id="team" class="chips"></div></div>
+      <div class="field"><span>Nhân sự tham gia <small class="muted">(chọn trong danh sách hoặc gõ thêm tên)</small></span>
+        <div id="team" class="chips"></div>
+        <div class="row-add"><input id="teamAdd" list="staffNames" placeholder="Gõ tên nhân sự khác…" autocomplete="off"><button type="button" class="btn" id="teamAddBtn">＋ Thêm</button></div>
+        <datalist id="staffNames">${m.staff.filter(active).map((s) => `<option value="${esc(s.name)}">${esc([s.title, s.branch].filter(Boolean).join(' · '))}</option>`).join('')}</datalist>
+      </div>
     </section>
     <section class="card">
       <h2>2. Dữ liệu sổ sách (file đầu vào)</h2>
@@ -234,12 +238,24 @@ async function viewNew() {
     const l = locs.find((x) => x.code === f.location.value);
     const d = new Date(f.date.value || today);
     if (!f.name.dataset.touched) f.name.value = `Kiểm kê ${l?.name || ''} T${d.getMonth() + 1}/${d.getFullYear()}`;
-    const st = m.staff.filter(active);
-    const pref = st.filter((s) => s.location === f.location.value);
-    const rest = st.filter((s) => s.location !== f.location.value);
-    $('#team').innerHTML = [...pref, ...rest].map((s) =>
-      `<label class="chip ${s.location === f.location.value ? '' : 'dim'}"><input type="checkbox" value="${esc(s.name)}" ${s.location === f.location.value ? 'checked' : ''}>${esc(s.name)}</label>`).join('') || '<small class="muted">Chưa có danh sách nhân sự</small>';
+    // Chỉ hiện sẵn nhân sự cùng địa điểm + người đã chọn/gõ thêm; người khác chọn qua ô gõ tên
+    const picked = new Set($$('#team input:checked').map((i) => i.value));
+    const here = m.staff.filter(active).filter((s) => s.location === f.location.value).map((s) => s.name);
+    const names = [...new Set([...here, ...picked])];
+    $('#team').innerHTML = names.map((n) =>
+      `<label class="chip"><input type="checkbox" value="${esc(n)}" ${here.includes(n) || picked.has(n) ? 'checked' : ''}>${esc(n)}</label>`).join('')
+      || '<small class="muted">Chưa có nhân sự gắn với địa điểm này — gõ tên bên dưới</small>';
   };
+  const addTeam = () => {
+    const names = $('#teamAdd').value.split(',').map((x) => x.trim()).filter(Boolean);
+    for (const n of names) if (!$$('#team input').some((i) => i.value === n))
+      $('#team').insertAdjacentHTML('beforeend', `<label class="chip"><input type="checkbox" value="${esc(n)}" checked>${esc(n)}</label>`);
+    $('#team small')?.remove();
+    $('#teamAdd').value = '';
+  };
+  $('#teamAddBtn').onclick = addTeam;
+  $('#teamAdd').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTeam(); } });
+  $('#teamAdd').addEventListener('change', (e) => { if (m.staff.some((s) => s.name === e.target.value)) addTeam(); });
   f.name.addEventListener('input', () => { f.name.dataset.touched = 1; });
   f.location.addEventListener('change', syncName);
   f.date.addEventListener('change', syncName);
@@ -345,7 +361,8 @@ async function viewCount(id) {
   </div>
   <section id="tab-scan" class="tab">
     <div class="scan-opts">
-      <label>Người kiểm<select id="staff"><option value="">— chọn —</option>${[...new Set([...team, ...m.staff.filter(active).map((s) => s.name)])].map((n) => `<option ${n === st.staff ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label>
+      <label>Người kiểm<input id="staff" list="staffList" value="${esc(st.staff)}" placeholder="Chọn hoặc gõ tên" autocomplete="off">
+        <datalist id="staffList">${[...new Set([...team, ...m.staff.filter(active).map((s) => s.name)])].map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
       <label>SL mặc định<input id="defQty" type="number" inputmode="decimal" min="0" step="any" value="1"></label>
     </div>
     <div class="camera" id="cam">
@@ -354,6 +371,7 @@ async function viewCount(id) {
       <div class="cam-start" id="camStart"><button class="btn btn-primary btn-lg" ${closed ? 'disabled' : ''}>Bật camera</button><small>Cho phép quyền camera khi Safari hỏi</small></div>
     </div>
     <div class="scan-actions">
+      <div class="seg zoom" id="zoom" hidden></div>
       <button class="btn" id="torch" hidden>🔦</button>
       <label class="switch"><input type="checkbox" id="auto"><span>Quét liên tục</span></label>
       <button class="btn btn-primary btn-lg grow" id="shot" ${closed ? 'disabled' : ''}>◉ Chụp &amp; nhận diện</button>
@@ -412,7 +430,7 @@ async function viewCount(id) {
       if (st.auto) { toast(`Serial ${serial} đã quét rồi — bỏ qua`, 'warn'); return; }
       if (!await confirmBox('Serial đã được quét', `Serial ${serial} đã ghi nhận lúc ${fmtDate(dupe.ts)} bởi ${dupe.staff || dupe.user} (mã ${dupe.sku}). Vẫn ghi nhận thêm?`, 'Vẫn ghi', true)) return;
     }
-    if (!st.staff) toast('Nên chọn "Người kiểm" để báo cáo rõ trách nhiệm', 'warn');
+    if (!st.staff && !st.warnedStaff) { st.warnedStaff = true; toast('Nên chọn "Người kiểm" để báo cáo rõ trách nhiệm', 'warn'); }
     const e = expBy.get(sku), it = itemBy.get(sku);
     const c = {
       id: uid('C'), session_id: id, sku, name: e?.name || it?.name || '', qty: num(qty), method, raw: String(raw).slice(0, 120), serial,
@@ -526,6 +544,10 @@ async function viewCount(id) {
       await cam.start();
       $('#camStart').hidden = true;
       $('#torch').hidden = !cam.torchSupported;
+      const zs = cam.zoomLevels();
+      $('#zoom').innerHTML = zs.map((z) => `<button type="button" data-z="${z}" class="${z === 1 ? 'on' : ''}">${z}×</button>`).join('');
+      $('#zoom').hidden = zs.length < 2;
+      $('#zoom').title = cam.hardwareZoom ? 'Zoom quang học/phần cứng của camera' : 'Zoom số (máy không hỗ trợ zoom phần cứng)';
       initOcr().catch(() => {}); // tải trước bộ OCR
     } catch (e) {
       toast(e.name === 'NotAllowedError' ? 'Bạn đã chặn quyền camera. Vào Cài đặt > Safari > Camera để cho phép.' : e.message, 'error', 5000);
@@ -541,7 +563,12 @@ async function viewCount(id) {
   };
   let torchOn = false;
   $('#torch').onclick = async () => { torchOn = !torchOn; await cam.torch(torchOn); };
-  $('#staff').onchange = (e) => { st.staff = e.target.value; ls.set('kk_staff_' + id, st.staff); };
+  $('#zoom').onclick = async (e) => {
+    const b = e.target.closest('[data-z]'); if (!b) return;
+    await cam.setZoom(+b.dataset.z);
+    $$('#zoom button').forEach((x) => x.classList.toggle('on', x === b));
+  };
+  $('#staff').addEventListener('input', (e) => { st.staff = e.target.value.trim(); ls.set('kk_staff_' + id, st.staff); });
   $('#tabs').onclick = (e) => {
     const b = e.target.closest('[data-t]'); if (!b) return;
     st.tab = b.dataset.t;
@@ -654,7 +681,7 @@ async function viewReport(id) {
 const ADMIN = {
   locations: { title: 'Địa điểm', key: 'code', cols: [['code', 'Code'], ['name', 'Name'], ['type', 'Loại'], ['branch', 'Mã chi nhánh'], ['region', 'Khu vực · Chi nhánh'], ['address', 'Địa chỉ'], ['manager', 'Phụ trách'], ['active', 'Hoạt động', 'bool']] },
   items: { title: 'Hàng hóa / linh kiện', key: 'sku', cols: [['sku', 'Mã hàng'], ['name', 'Tên hàng'], ['unit', 'ĐVT'], ['category', 'Nhóm hàng'], ['price', 'Đơn giá', 'num'], ['barcode', 'Mã vạch / mã phụ'], ['alias', 'Mã khác (cách nhau dấu ,)']] },
-  staff: { title: 'Nhân sự kiểm kê', key: 'code', cols: [['code', 'Mã NV'], ['name', 'Họ tên'], ['phone', 'SĐT'], ['location', 'Chi nhánh', 'loc'], ['title', 'Chức danh'], ['active', 'Hoạt động', 'bool']] },
+  staff: { title: 'Nhân sự kiểm kê', key: 'code', cols: [['code', 'Mã NV'], ['name', 'Họ tên'], ['location', 'Địa điểm kiểm kê', 'loc'], ['branch', 'Chi nhánh (HR)'], ['dept', 'Bộ phận'], ['title', 'Vị trí'], ['phone', 'SĐT'], ['active', 'Đang làm', 'bool']] },
   aliases: { title: 'Mã tem đã học', key: 'alias', cols: [['alias', 'Chữ in trên tem'], ['sku', 'Mã hàng hệ thống'], ['created_by', 'Người dạy']] },
   users: { title: 'Tài khoản', key: 'username', cols: [['username', 'Tài khoản'], ['fullname', 'Họ tên'], ['role', 'Vai trò', 'role'], ['location', 'Chi nhánh', 'loc'], ['active', 'Hoạt động', 'bool'], ['password', 'Mật khẩu mới', 'pw']] },
 };
@@ -676,6 +703,7 @@ async function viewAdmin(tab = 'items') {
       <button class="btn" id="add">＋ Thêm dòng</button>
       <label class="btn">⬆ Nhập Excel<input type="file" id="imp" accept=".xlsx,.xls,.csv" hidden></label>
       <button class="btn" id="exp">⬇ Xuất Excel</button>
+      ${tab === 'staff' ? '<button class="btn" id="sheetSync">⟳ Đồng bộ Google Sheet</button>' : ''}
       <button class="btn btn-primary" id="save">💾 Lưu</button>
     </div>
     <p class="muted tiny">${tab === 'users' ? 'Để trống "Mật khẩu mới" nếu giữ nguyên mật khẩu cũ. ' : ''}Nhập Excel: dòng đầu là tiêu đề cột giống bảng dưới. Mã trùng sẽ được cập nhật.</p>
@@ -721,6 +749,41 @@ async function viewAdmin(tab = 'items') {
     rows.unshift(r); q = ''; $('#q').value = ''; page = 0; dirty = true; draw();
     $('#grid input[data-k]')?.focus();
   };
+  $('#sheetSync')?.addEventListener('click', async () => {
+    const url = await modal({
+      title: 'Đồng bộ nhân sự từ Google Sheet',
+      body: `<p class="muted">Dán link Google Sheet danh sách nhân sự (đã chia sẻ "Bất kỳ ai có đường liên kết"). App chỉ lấy: Mã NV, Họ tên, Chi nhánh, Bộ phận, Vị trí, Trạng thái — không lấy SĐT, email, ngày sinh.</p>
+        <label>Link Google Sheet<input id="sheetUrl" value="${esc(ls.get('kk_staff_sheet', ''))}" placeholder="https://docs.google.com/spreadsheets/d/…"></label>`,
+      actions: [{ label: 'Hủy', value: null }, { label: 'Đồng bộ', value: (w) => $('#sheetUrl', w).value.trim() }],
+    });
+    if (!url) return;
+    try {
+      const id = url.match(/\/d\/([\w-]+)/)?.[1];
+      if (!id) throw new Error('Link không đúng dạng Google Sheet');
+      const gid = url.match(/[#&?]gid=(\d+)/)?.[1] || '0';
+      const res = await fetch(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`);
+      if (!res.ok) throw new Error('Không đọc được Sheet — kiểm tra quyền chia sẻ');
+      const raw = window.XLSX.utils.sheet_to_json(window.XLSX.read(await res.text(), { type: 'string', raw: true }).Sheets.Sheet1, { header: 1, defval: '' });
+      const { headerRow, map } = detectColumns(raw, CONFIG.staffSheetColumns);
+      if (map.code == null || map.name == null) throw new Error('Không thấy cột "Mã NV" / "Họ và tên"');
+      const locByName = new Map(m.locations.map((l) => [fold(l.name), l.code]));
+      const guessLoc = (b) => { const f = fold(b); return locByName.get(f) || locByName.get(f.replace(/^cn /, 'cua hang ')) || ''; };
+      const cap = (t) => { t = String(t).trim().toLowerCase(); return t.charAt(0).toUpperCase() + t.slice(1); };
+      let added = 0, updated = 0;
+      for (const r of raw.slice(headerRow + 1)) {
+        const code = String(r[map.code] ?? '').trim(); const name = String(r[map.name] ?? '').trim();
+        if (!code || !name) continue;
+        const get = (k) => (map[k] == null ? '' : String(r[map[k]] ?? '').trim());
+        const rec = { code, name, branch: get('branch'), dept: get('dept'), title: cap(get('title')), active: map.status == null || fold(get('status')) === 'dang lam' };
+        const ex = rows.find((x) => String(x.code) === code);
+        if (ex) { if (ex.branch !== rec.branch || !ex.location) ex.location = guessLoc(rec.branch) || ex.location; Object.assign(ex, rec); updated++; }
+        else { rows.push({ phone: '', ...rec, location: guessLoc(rec.branch) }); added++; }
+      }
+      ls.set('kk_staff_sheet', url);
+      dirty = true; draw();
+      toast(`Đồng bộ: ${added} mới, ${updated} cập nhật. Bấm Lưu để ghi.`, 'ok', 5000);
+    } catch (err) { toast(err.message, 'error', 5000); }
+  });
   $('#exp').onclick = () => {
     try {
       const cols = def.cols.filter(([, , t]) => t !== 'pw');

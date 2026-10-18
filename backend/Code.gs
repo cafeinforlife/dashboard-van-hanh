@@ -6,7 +6,7 @@ const TABLES = {
   users:     ['username', 'fullname', 'role', 'location', 'active', 'password_hash'],
   locations: ['code', 'name', 'type', 'branch', 'region', 'address', 'manager', 'active'], // mã = Location Code trong ERP
   items:     ['sku', 'name', 'unit', 'category', 'price', 'barcode', 'alias'],
-  staff:     ['code', 'name', 'phone', 'location', 'title', 'active'],
+  staff:     ['code', 'name', 'phone', 'location', 'branch', 'dept', 'title', 'active'],
   aliases:   ['alias', 'sku', 'created_by', 'ts'], // mã in trên tem ↔ mã hệ thống (app tự học)
   sessions:  ['id', 'name', 'location', 'date', 'status', 'team', 'note', 'created_by', 'created_at', 'closed_at'],
   expected:  ['session_id', 'sku', 'name', 'unit', 'qty', 'price', 'bin', 'note'],
