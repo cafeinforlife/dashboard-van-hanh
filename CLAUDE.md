@@ -30,6 +30,10 @@ Thẻ giá xe (hangtag) KHÔNG có mã hàng → kiểm kê xe nên quét số k
 - Location (kho/cửa hàng): `data/locations.json` tạo từ Locations.xlsx của ERP — 300 địa điểm (42 kho, 257 cửa hàng, 1 VP), 15 chi nhánh (nhóm theo "KS Customer No." BD00, BH00, BR00, HO00…). Bỏ dòng nhóm không tên và TRANS-IN/OUT. Ninh Thuận = HO39 (thuộc CN HCM).
 - Báo cáo Nhập-Xuất-Tồn: tiêu đề song ngữ 2 dòng ở dòng 8; cột `Mã hàng (Item)`, `Số lượng cuối kỳ (Ending Balance)`; mã kho ở đầu file `Kho (Location): BR01`; dòng cuối "Tổng theo kho".
 - Mã ghế massage dạng `KMC0B10T1PRD`, `KMCVG89T5NGY`, `KMC00G16S4BK`, `KMC0G25S4DBK`; linh kiện dạng `KGMB7-A48`, `KXLD10-A12`.
+- CẤU TRÚC MÃ (phân tích 6.274 mã, 18/10/2026):
+  - Thành phẩm ghế massage 12 ký tự `KMC|đệm 0/V|model|phiên bản|dòng|màu`, VD `KMCV·G89·T5·N·GY`, `KMC0·G25·S4·D·BK`, `KMC0·B10·T1·P·RD`. Phiên bản: T/V+số (lô), S4 = Sonic 4.0 ("sonic40"). Dòng: D=Deluxe, S=Standard, C=Classic, P=Premium, N=thường (K, L chưa rõ). Màu: BK đen, GY xám, BR nâu, BG/BE be, RD đỏ, YL vàng, WH trắng (DB, DO chưa rõ). Mã cũ dạng `KMCG000xx…` (53 mã) không theo mẫu này. 42 model, 30 model có nhiều mã (khác lô/màu).
+  - Linh kiện `[K=Kingsport|A=ABC][GM ghế massage|CB chạy bộ|XD xe đạp|QH quạt|MX máy xay|MS…][model]-[mã bộ phận][-Vxx]`, VD `KGMB7-A48`. Mã bộ phận thống nhất giữa các model: A12 van từ đóng xả khí, A23 bộ cùm massage lưng, A29 da lót lưng, A40 bánh răng kết nối; B01 board điều khiển (máy chạy bộ).
+  - Độ duy nhất theo hậu tố: 6 ký tự cuối 89,4%, 7 ký tự 94,7%, 8 ký tự 98,9%.
 - Tem trên máy có thể in mã KHÁC ERP (tem B10 in `KMC0T10PRD`) → dùng tính năng "học mã tem" (bảng `aliases`). Tem serial: `302510280211`, `OYL2604220077`.
 
 ## Kỹ thuật
