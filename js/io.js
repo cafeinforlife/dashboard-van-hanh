@@ -97,6 +97,8 @@ export function reconcile(expected, counts, items = []) {
   const itemBy = new Map(items.map((i) => [i.sku, i]));
   const counted = new Map();
   for (const c of counts) counted.set(c.sku, (counted.get(c.sku) || 0) + num(c.qty));
+  // Bỏ các mã tồn sổ sách = 0 mà không quét thấy (hàng đã xuất hết) — không cần kiểm
+  expected = expected.filter((e) => num(e.qty) !== 0 || counted.has(e.sku));
   const rows = expected.map((e) => {
     const got = counted.get(e.sku) || 0;
     const exp = num(e.qty);
@@ -175,10 +177,11 @@ export function exportReport({ session, locationName, rows, summary, counts, sta
   ws2['!cols'] = [5, 18, 38, 7, 10, 11, 11, 11, 12, 16, 11].map((wch) => ({ wch }));
   ws2['!autofilter'] = { ref: `A1:K${body.length + 1}` };
 
+  const inList = new Set(rows.filter((r) => r.status !== 'extra').map((r) => r.sku));
   const ws3 = XL.utils.aoa_to_sheet([
     ['Thời gian', 'Mã hàng', 'Tên hàng', 'SL', 'Serial', 'Cách ghi nhận', 'Người quét', 'Nhân sự', 'Trong DS', 'Văn bản OCR', 'Ghi chú'],
     ...[...counts].sort((a, b) => a.ts - b.ts).map((c) => [fmtDate(c.ts), c.sku, c.name, num(c.qty), c.serial || '',
-      c.method === 'ocr' ? 'Camera OCR' : 'Nhập tay', c.user, c.staff, c.in_list ? 'Có' : 'Không', c.raw, c.note]),
+      c.method === 'ocr' ? 'Camera OCR' : 'Nhập tay', c.user, c.staff, inList.has(c.sku) ? 'Có' : 'Không', c.raw, c.note]),
   ]);
   ws3['!cols'] = [16, 18, 34, 6, 16, 13, 14, 18, 8, 30, 20].map((wch) => ({ wch }));
 

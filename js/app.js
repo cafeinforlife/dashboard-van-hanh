@@ -244,8 +244,8 @@ async function viewNew() {
       </div>
     </section>
     <section class="card">
-      <h2>2. Dữ liệu sổ sách (file đầu vào)</h2>
-      <p class="muted">File Excel/CSV gồm tối thiểu cột <b>Mã hàng</b> và <b>Số lượng</b>. Các tên cột tương đương được tự nhận diện.</p>
+      <h2>2. File tồn kho <small class="muted">(không bắt buộc — có thể nạp sau khi kiểm)</small></h2>
+      <p class="muted">Không có file: app vẫn nhận mã theo <b>danh mục ${fmt(m.items.length)} mã hàng</b>; kiểm xong vào <b>Báo cáo → Nạp file tồn kho</b> để đối chiếu. File cần tối thiểu cột <b>Mã hàng</b> và <b>Số lượng</b>.</p>
       <div class="row-btns"><button type="button" class="btn" id="tpl">⬇ Tải file mẫu</button></div>
       <label class="drop" id="drop">
         <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
@@ -344,7 +344,7 @@ async function viewNew() {
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const recs = parsed?.records || [];
-    if (!recs.length && !await confirmBox('Chưa có file đầu vào', 'Tạo đợt kiểm kê "mù" (không có số liệu sổ sách)? Mọi mã quét được sẽ ghi nhận là "Ngoài DS".', 'Vẫn tạo')) return;
+    if (!recs.length && !await confirmBox('Kiểm trước, đối chiếu sau', 'Chưa nạp file tồn kho. App sẽ nhận mã theo danh mục hàng hóa; kiểm xong vào Báo cáo → "Nạp file tồn kho" để đối chiếu.', 'Bắt đầu kiểm')) return;
     const btn = $('#create'); btn.disabled = true; btn.textContent = 'Đang tạo…';
     try {
       const s = await Store.createSession({
@@ -422,17 +422,23 @@ async function viewCount(id) {
   cleanup = () => { st.auto = false; clearTimeout(timer); cam.stop(); };
 
   const drawStats = () => {
-    const done = expected.filter((e) => gotOf(e.sku) >= num(e.qty) && num(e.qty) > 0).length;
     const touched = new Set(counts.map((c) => c.sku));
+    if (!expected.length) { // đợt chưa nạp tồn kho: chỉ thống kê số đã đếm
+      $('#pbar').style.width = '0%';
+      $('#cstats').innerHTML = `<span><b>${touched.size}</b> mã đã đếm</span><span><b>${fmt(counts.reduce((a, c) => a + num(c.qty), 0))}</b> sản phẩm</span><span><b>${counts.length}</b> lượt</span><span class="muted">Nạp tồn kho ở Báo cáo để đối chiếu</span>`;
+      return;
+    }
+    const need = expected.filter((e) => num(e.qty) > 0); // bỏ mã tồn = 0
+    const done = need.filter((e) => gotOf(e.sku) >= num(e.qty)).length;
     const extra = [...touched].filter((s) => !expBy.has(s)).length;
-    const p = pct(expected.filter((e) => touched.has(e.sku)).length, expected.length);
+    const p = pct(need.filter((e) => touched.has(e.sku)).length, need.length);
     $('#pbar').style.width = p + '%';
-    $('#cstats').innerHTML = `<span><b>${p}%</b> tiến độ</span><span><b>${done}</b>/${expected.length} mã đủ SL</span><span><b>${extra}</b> ngoài DS</span><span><b>${counts.length}</b> lượt</span>`;
+    $('#cstats').innerHTML = `<span><b>${p}%</b> tiến độ</span><span><b>${done}</b>/${need.length} mã đủ SL</span><span><b>${extra}</b> ngoài DS</span><span><b>${counts.length}</b> lượt</span>`;
   };
 
   const drawList = () => {
     const q = fold($('#lq').value);
-    const rows = expected.map((e) => ({ ...e, got: gotOf(e.sku) }))
+    const rows = expected.map((e) => ({ ...e, got: gotOf(e.sku) })).filter((r) => num(r.qty) !== 0 || r.got)
       .filter((r) => !q || fold(r.sku + ' ' + r.name).includes(q))
       .filter((r) => st.filter === 'all' || (st.filter === 'done' ? r.got >= num(r.qty) : r.got < num(r.qty)));
     $('#lst').innerHTML = rows.length ? `<div class="item-list">${rows.slice(0, 300).map((r) => `
@@ -446,7 +452,7 @@ async function viewCount(id) {
     const rows = [...counts].sort((a, b) => b.ts - a.ts);
     $('#log').innerHTML = rows.length ? `<div class="item-list">${rows.slice(0, 200).map((c) => `
       <div class="item-row">
-        <div><b class="mono">${esc(c.sku)}</b> ${c.in_list ? '' : '<span class="pill pill-warn">Ngoài DS</span>'}<small>${c.serial ? `SN ${esc(c.serial)} · ` : ''}${esc(c.name)} · ${fmtDate(c.ts)} · ${esc(c.staff || c.user)} · ${c.method === 'ocr' ? '📷' : '⌨'}</small></div>
+        <div><b class="mono">${esc(c.sku)}</b> ${expected.length && !expBy.has(c.sku) ? '<span class="pill pill-warn">Ngoài DS</span>' : ''}<small>${c.serial ? `SN ${esc(c.serial)} · ` : ''}${esc(c.name)} · ${fmtDate(c.ts)} · ${esc(c.staff || c.user)} · ${c.method === 'ocr' ? '📷' : '⌨'}</small></div>
         <span class="qty">+${fmt(c.qty)}</span>
         ${closed ? '' : `<button class="icon-btn" data-del="${esc(c.id)}" title="Xóa lượt này">🗑</button>`}
       </div>`).join('')}</div>` : '<div class="empty">Chưa có lượt quét nào.</div>';
@@ -469,9 +475,10 @@ async function viewCount(id) {
     };
     counts.push(c);
     st.last = { sku, ts: Date.now() };
-    beep(e ? 1200 : 700);
+    const blind = !expected.length; // đợt chưa nạp tồn kho: không cảnh báo "ngoài danh sách"
+    beep(e || blind ? 1200 : 700);
     redraw();
-    toast(`+${fmt(c.qty)} ${sku}${e ? ` (${fmt(gotOf(sku))}/${fmt(e.qty)})` : ' — ngoài danh sách'}`, e ? 'ok' : 'warn', 1800);
+    toast(`+${fmt(c.qty)} ${sku}${e ? ` (${fmt(gotOf(sku))}/${fmt(e.qty)})` : blind ? ` (đã đếm ${fmt(gotOf(sku))})` : ' — ngoài danh sách'}`, e || blind ? 'ok' : 'warn', 1800);
     try { await Store.addCounts([c]); } catch (err) { toast('Chưa lưu được: ' + err.message, 'error'); }
     window.dispatchEvent(new CustomEvent('queuechange'));
   }
@@ -493,7 +500,7 @@ async function viewCount(id) {
     const drawC = (list) => {
       $('#mc', body).innerHTML = list.length ? list.map((c) => `
         <button type="button" class="cand ${c.sku === sel ? 'on' : ''}" data-sku="${esc(c.sku)}">
-          <b class="mono">${esc(c.sku)}</b>${c.expected ? '' : ' <span class="pill pill-warn">Ngoài DS</span>'}
+          <b class="mono">${esc(c.sku)}</b>${c.expected || !expected.length ? '' : ' <span class="pill pill-warn">Ngoài DS</span>'}
           ${c.reason ? `<small class="why">🔎 Khớp theo ${esc(c.reason)}</small>` : ''}
           <small>${esc(c.name)}${expBy.has(c.sku) ? ` · đã đếm ${fmt(gotOf(c.sku))}/${fmt(expBy.get(c.sku).qty)}` : ''}</small>
           ${c.score != null ? `<em>${Math.round(c.score * 100)}%</em>` : ''}
@@ -659,11 +666,13 @@ async function viewReport(id) {
   </div>
   <div class="toolbar no-print">
     ${!closed ? `<a class="btn btn-primary" href="#/s/${esc(id)}/count">📷 Tiếp tục kiểm</a>` : ''}
+    <label class="btn ${expected.length ? '' : 'btn-primary'}">📥 ${expected.length ? 'Nạp lại' : 'Nạp'} file tồn kho<input type="file" id="stockFile" accept=".xlsx,.xls,.csv" hidden></label>
     <button class="btn" id="xls">⬇ Xuất Excel</button>
     <button class="btn" id="print">🖨 In</button>
     ${Store.can('manage') ? `<button class="btn" id="toggle">${closed ? '↺ Mở lại đợt' : '✔ Chốt kiểm kê'}</button>` : ''}
     ${Store.can('admin') ? '<button class="btn btn-danger-ghost" id="del">🗑 Xóa đợt</button>' : ''}
   </div>
+  ${expected.length ? '' : `<div class="banner">Đợt này <b>chưa có file tồn kho</b> — đã ghi nhận ${fmt(s.gotQty)} sản phẩm / ${fmt(new Set(counts.map((c) => c.sku)).size)} mã. Bấm <b>📥 Nạp file tồn kho</b> để đối chiếu thiếu / thừa.</div>`}
   <section class="kpis">
     <div class="kpi"><span>Tiến độ</span><b>${s.progress}%</b><small>${s.countedSku}/${s.totalSku} mã</small></div>
     <div class="kpi"><span>Độ chính xác</span><b>${s.accuracy}%</b><small>${s.ok} mã khớp</small></div>
@@ -697,6 +706,36 @@ async function viewReport(id) {
     filter = b.dataset.f; $$('#chips button').forEach((x) => x.classList.toggle('on', x === b)); draw();
   };
   $('#q').addEventListener('input', debounce(draw, 150));
+  $('#stockFile').addEventListener('change', async (ev) => {
+    const file = ev.target.files[0]; ev.target.value = '';
+    if (!file) return;
+    try {
+      const raw = await readSheet(file);
+      const det = detectColumns(raw);
+      if (det.map.sku == null || det.map.qty == null) {
+        // Không tự nhận được cột: cho chọn tay
+        const opts = det.headers.map((h, i) => `<option value="${i}">${esc(h || `Cột ${i + 1}`)}</option>`).join('');
+        const pick = await modal({ title: 'Chọn cột trong file', body: `<p class="muted">Không tự nhận ra cột Mã hàng / Số lượng (dòng tiêu đề: ${det.headerRow + 1}).</p>
+          <label>Mã hàng<select id="cSku">${opts}</select></label><label>Số lượng tồn<select id="cQty">${opts}</select></label>`,
+          actions: [{ label: 'Hủy', value: null }, { label: 'Tiếp tục', value: (w) => ({ sku: +$('#cSku', w).value, qty: +$('#cQty', w).value }) }] });
+        if (!pick) return;
+        Object.assign(det.map, pick);
+      }
+      const recs = rowsToRecords(raw, det.headerRow, det.map);
+      if (!recs.length) throw new Error('File không có dòng hàng nào');
+      const scanned = new Set(counts.map((c) => c.sku));
+      const hit = recs.filter((r) => scanned.has(r.sku)).length;
+      const whWarn = det.warehouse && det.warehouse !== session.location
+        ? `<p class="warn-text">⚠ File là tồn kho <b>${esc(det.warehouse)}</b>, đợt kiểm kê này ở <b>${esc(session.location)}</b>.</p>` : '';
+      const ok = await confirmBox('Đối chiếu với file tồn kho',
+        `${file.name}: ${recs.length} mã, tổng ${fmt(recs.reduce((a, r) => a + r.qty, 0))} sản phẩm. ${hit}/${scanned.size} mã đã quét có trong file.${expected.length ? ' File mới sẽ THAY file tồn kho đã nạp trước.' : ''}`, 'Đối chiếu');
+      if (!ok) return;
+      if (whWarn && !await modal({ title: 'Kiểm tra lại kho', body: whWarn, actions: [{ label: 'Hủy', value: false }, { label: 'Vẫn dùng file này', value: true }] })) return;
+      await Store.setExpected(id, recs);
+      toast('Đã nạp file tồn kho — báo cáo đã cập nhật', 'ok');
+      route();
+    } catch (err) { toast('Không nạp được file: ' + err.message, 'error', 5000); }
+  });
   $('#xls').onclick = () => {
     try { exportReport({ session, locationName: locName(m, session.location), rows, summary: s, counts, staffNames }); }
     catch (e) { toast(e.message, 'error'); }

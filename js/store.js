@@ -43,50 +43,35 @@ async function erpItems() {
 
 async function seedDb() {
   const h = await sha256('admin:admin123');
-  const locs = [
-    ['DNA', 'CN Đồng Nai', 'Đông Nam Bộ'], ['BDU', 'CN Bình Dương', 'Đông Nam Bộ'],
-    ['BRVT', 'CN Bà Rịa - Vũng Tàu', 'Đông Nam Bộ'], ['TNI', 'CN Tây Ninh', 'Đông Nam Bộ'],
-    ['LAN', 'CN Long An - Đức Hòa', 'Đông Nam Bộ'], ['CCI', 'CN Củ Chi', 'HCM'],
-    ['DTR', 'CN Đức Trọng - Lâm Đồng', 'Tây Nguyên'], ['BTH', 'CN Bình Thuận', 'Nam Trung Bộ'],
-    ['NTH', 'CN Ninh Thuận', 'Nam Trung Bộ'],
-  ];
-  const items = [
-    ['MCB-BOARD-01', 'Bo mạch điều khiển máy chạy bộ', 'Cái', 'Máy chạy bộ', 1250000],
-    ['MCB-MOTOR-2HP', 'Motor DC 2HP', 'Cái', 'Máy chạy bộ', 2100000],
-    ['MCB-BELT-450', 'Băng tải 450mm', 'Cái', 'Máy chạy bộ', 650000],
-    ['MCB-SAFE-KEY', 'Khóa an toàn từ tính', 'Cái', 'Máy chạy bộ', 45000],
-    ['MSG-RLR-08', 'Con lăn ghế massage', 'Bộ', 'Ghế massage', 380000],
-    ['MV-CTRL-48V', 'IC điều khiển xe điện 48V', 'Cái', 'Xe điện Move', 890000],
-    ['MV-BAT-4820', 'Pin Lithium 48V-20Ah', 'Khối', 'Xe điện Move', 5400000],
-    ['MV-CHG-48V', 'Sạc 48V 3A', 'Cái', 'Xe điện Move', 420000],
-    ['MV-TIRE-1625', 'Lốp 16x2.5', 'Cái', 'Xe điện Move', 260000],
-    ['MV-BRK-PAD', 'Má phanh đĩa', 'Bộ', 'Xe điện Move', 95000],
-  ];
   return {
     users: [{ username: 'admin', fullname: 'Quản trị hệ thống', role: 'admin', location: '', active: true, password_hash: h }],
-    locations: (await erpLocations()) || locs.map(([code, name, region]) => ({ code, name, type: 'Kho', branch: '', region, address: '', manager: '', active: true })),
-    meta: { locVer: LOC_VER, itemsVer: ITEMS_VER },
-    items: (await erpItems()) || items.map(([sku, name, unit, category, price]) => ({ sku, name, unit, category, price, barcode: '', alias: '' })),
+    // Tải danh sách gốc thất bại (mạng chập chờn lần đầu) → để trống, migrate*() tự tải lại ở lần mở sau
+    locations: [], items: [], meta: {},
     staff: [], // đồng bộ từ Google Sheet nhân sự (Danh mục → Nhân sự)
     sessions: [], expected: [], counts: [],
   };
 }
 
-let _db = null;
+let _db = null, _dbLoading = null;
 async function db() {
   if (_db) return _db;
-  _db = ls.get(K_DB) || await seedDb();
-  for (const t of Object.keys(TABLES)) _db[t] ||= [];
-  await migrateLocations(_db);
-  await migrateItems(_db);
-  ls.set(K_DB, _db);
-  return _db;
+  // Khởi tạo đúng 1 lần kể cả khi nhiều thao tác gọi cùng lúc
+  _dbLoading ||= (async () => {
+    const d = ls.get(K_DB) || await seedDb();
+    for (const t of Object.keys(TABLES)) d[t] ||= [];
+    await migrateLocations(d);
+    await migrateItems(d);
+    ls.set(K_DB, d);
+    _db = d;
+    return d;
+  })();
+  return _dbLoading;
 }
 const saveDb = () => ls.set(K_DB, _db);
 
 // Máy đã chạy bản DEMO cũ: nạp danh sách Location ERP, bỏ các địa điểm mẫu chưa dùng
 async function migrateLocations(d) {
-  if ((d.meta?.locVer || 0) >= LOC_VER) return;
+  if ((d.meta?.locVer || 0) >= LOC_VER && d.locations.length) return;
   const erp = await erpLocations();
   if (!erp) return;
   const SAMPLE = { DNA: 'BH01', BDU: 'BD01', BRVT: 'BR01', DTR: 'DT01' };
@@ -101,7 +86,7 @@ async function migrateLocations(d) {
 
 // Máy đã dùng bản cũ: bổ sung danh mục đóng gói, giữ nguyên hàng người dùng đã nhập (có đơn giá)
 async function migrateItems(d) {
-  if ((d.meta?.itemsVer || 0) >= ITEMS_VER) return;
+  if ((d.meta?.itemsVer || 0) >= ITEMS_VER && d.items.length) return;
   const erp = await erpItems();
   if (!erp) return;
   const used = new Set([...d.expected, ...d.counts].map((x) => x.sku));
@@ -175,6 +160,12 @@ const demo = {
     if (!s) throw new Error('Không tìm thấy đợt kiểm kê');
     Object.assign(s, patch); saveDb();
     return s;
+  },
+  async setExpected({ id, expected }) {
+    const d = await db();
+    d.expected = d.expected.filter((e) => e.session_id !== id).concat(expected.map((e) => ({ ...e, session_id: id })));
+    saveDb();
+    return { ok: true, count: expected.length };
   },
   async deleteSession({ id }) {
     const d = await db();
@@ -252,7 +243,7 @@ export const Store = {
     const d = backup?.data;
     if (backup?.app !== 'kiem-ke' || !d || !Array.isArray(d.sessions) || !Array.isArray(d.items)) throw new Error('File sao lưu không hợp lệ');
     for (const t of Object.keys(TABLES)) d[t] ||= [];
-    _db = d; saveDb(); this._master = null;
+    _db = d; _dbLoading = Promise.resolve(d); saveDb(); this._master = null;
   },
   get user() { return ls.get(K_AUTH)?.user || null; },
   can(perm) {
@@ -279,6 +270,8 @@ export const Store = {
   createSession: (session, expected) => impl().createSession({ session, expected }),
   updateSession: (id, patch) => impl().updateSession({ id, patch }),
   deleteSession: (id) => impl().deleteSession({ id }),
+  // Nạp / nạp lại file tồn kho cho đợt đã có (kiểm trước, đối chiếu sau)
+  setExpected: (id, expected) => impl().setExpected({ id, expected }),
   deleteCount: (id) => impl().deleteCount({ id }),
   async addAlias(alias, sku) {
     await impl().addAlias({ alias, sku });

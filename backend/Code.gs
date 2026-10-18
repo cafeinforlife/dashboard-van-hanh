@@ -153,6 +153,15 @@ const ACTIONS = {
     });
   },
 
+  setExpected(req, user) {
+    need_(user, 'manage');
+    return withLock_(() => {
+      deleteWhere_('expected', (r) => r.session_id === req.id);
+      appendRows_('expected', (req.expected || []).map((e) => Object.assign({}, e, { session_id: req.id })));
+      return { ok: true, count: (req.expected || []).length };
+    });
+  },
+
   deleteSession(req, user) {
     need_(user, 'admin');
     return withLock_(() => {
