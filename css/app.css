@@ -258,6 +258,9 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 .cand .why { color: var(--accent); font-weight: 600; }
 :root[data-theme="dark"] .cand .why { color: var(--warn); }
 .cand.on { border-color: var(--primary); background: var(--primary-soft); }
+.new-item { border: 2px dashed var(--primary); border-radius: 10px; padding: 10px 12px 2px; margin: 8px 0 12px; background: var(--primary-soft); }
+.new-item > b { display: block; margin-bottom: 8px; }
+#newToggle { margin-bottom: 12px; }
 .stepper { display: flex; gap: 6px; }
 .stepper button { width: 52px; font-size: 1.3rem; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); cursor: pointer; }
 .stepper input { text-align: center; font-size: 1.2rem; font-weight: 700; }

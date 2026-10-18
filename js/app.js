@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { Store, ROLES } from './store.js';
 import { applyTheme, getTheme, setTheme } from './theme.js';
-import { Camera, initOcr, ocrReady, recognize, buildIndex, matchText, matchByModel, modelKeys, findSerial, addKey, codeLike } from './ocr.js';
+import { Camera, initOcr, ocrReady, recognize, buildIndex, matchText, matchByModel, modelKeys, findSerial, addKey, codeLike, codeGuess } from './ocr.js';
 import { readSheet, detectColumns, rowsToRecords, downloadTemplate, reconcile, exportReport, exportTable, STATUS } from './io.js';
 import { $, $$, esc, fold, num, fmt, fmtMoney, fmtDate, pct, uid, toast, modal, confirmBox, beep, debounce, ls } from './util.js';
 
@@ -491,6 +491,12 @@ async function viewCount(id) {
       ${raw ? `<p class="tiny muted">Văn bản đọc được: <code>${esc(raw.replace(/\s+/g, ' ').slice(0, 100))}</code></p>` : ''}
       <input id="mq" placeholder="Tìm mã / tên hàng…" autocomplete="off" autocapitalize="characters">
       <div id="mc" class="cand-list"></div>
+      <button type="button" class="btn btn-sm btn-block" id="newToggle">＋ Mã chưa có trong danh mục — thêm mã mới</button>
+      <div id="newItem" class="new-item" hidden>
+        <b>Thêm mã mới vào danh mục</b>
+        <label>Mã hàng *<input id="nSku" autocapitalize="characters" autocomplete="off" placeholder="VD: KGMB10-A23"></label>
+        <label>Tên hàng *<input id="nName" autocomplete="off" placeholder="VD: Bộ cùm massage lưng B10"></label>
+      </div>
       <label>Số serial (nếu có tem serial)<input id="mser" value="${esc(findSerial(raw))}" autocapitalize="characters" placeholder="VD: OYL2604220077"></label>
       <label>Số lượng<div class="stepper"><button type="button" data-s="-1">−</button><input id="mqty" type="number" inputmode="decimal" step="any" min="0" value="${defQty}"><button type="button" data-s="1">＋</button></div></label>`;
     const tem = method === 'ocr' ? codeLike(raw) : '';
@@ -504,12 +510,27 @@ async function viewCount(id) {
           ${c.reason ? `<small class="why">🔎 Khớp theo ${esc(c.reason)}</small>` : ''}
           <small>${esc(c.name)}${expBy.has(c.sku) ? ` · đã đếm ${fmt(gotOf(c.sku))}/${fmt(expBy.get(c.sku).qty)}` : ''}</small>
           ${c.score != null ? `<em>${Math.round(c.score * 100)}%</em>` : ''}
-        </button>`).join('') : '<p class="muted">Không tìm thấy mã phù hợp. Gõ để tìm, hoặc nhập mã mới rồi bấm Ghi nhận.</p>';
+        </button>`).join('') : '<p class="muted">Không tìm thấy mã phù hợp. Gõ để tìm, hoặc bấm <b>＋ Thêm mã mới</b> bên dưới.</p>';
+    };
+    let newMode = false;
+    $('#newToggle', body).onclick = () => {
+      newMode = !newMode;
+      $('#newItem', body).hidden = !newMode;
+      $('#newToggle', body).textContent = newMode ? '✕ Bỏ thêm mã mới (chọn trong danh mục)' : '＋ Mã chưa có trong danh mục — thêm mã mới';
+      if (newMode) {
+        sel = ''; $$('.cand', body).forEach((x) => x.classList.remove('on'));
+        const n = $('#nSku', body);
+        n.value ||= ($('#mq', body).value.trim() || codeGuess(raw)).toUpperCase();
+        (n.value ? $('#nName', body) : n).focus();
+      }
     };
     drawC(cands);
     body.addEventListener('click', (e) => {
       const c = e.target.closest('.cand');
-      if (c) { sel = c.dataset.sku; $$('.cand', body).forEach((x) => x.classList.toggle('on', x === c)); }
+      if (c) {
+        sel = c.dataset.sku; $$('.cand', body).forEach((x) => x.classList.toggle('on', x === c));
+        if (newMode) $('#newToggle', body).click(); // chọn mã có sẵn → tắt chế độ thêm mới
+      }
       const s = e.target.closest('[data-s]');
       if (s) { const q = $('#mqty', body); q.value = Math.max(0, num(q.value) + +s.dataset.s); }
     });
@@ -524,9 +545,28 @@ async function viewCount(id) {
       title: method === 'ocr' ? 'Kết quả nhận diện' : 'Nhập mã hàng',
       body,
       actions: [{ label: 'Hủy', value: null }, {
-        label: 'Ghi nhận', value: () => ({ sku: sel || $('#mq', body).value.trim().toUpperCase(), qty: $('#mqty', body).value, serial: $('#mser', body).value, learn: $('#mlearn', body)?.checked }),
+        label: 'Ghi nhận',
+        validate: () => {
+          if (newMode && (!$('#nSku', body).value.trim() || !$('#nName', body).value.trim())) { toast('Nhập đủ Mã hàng và Tên hàng cho mã mới', 'warn'); return false; }
+          if (!newMode && !sel && !$('#mq', body).value.trim()) { toast('Chọn một mã, hoặc bấm "Thêm mã mới"', 'warn'); return false; }
+          return true;
+        },
+        value: () => {
+          const common = { qty: $('#mqty', body).value, serial: $('#mser', body).value, learn: $('#mlearn', body)?.checked };
+          if (!newMode) return { ...common, sku: sel || $('#mq', body).value.trim().toUpperCase() };
+          const sku = $('#nSku', body).value.trim().toUpperCase();
+          return { ...common, sku, newItem: { sku, name: $('#nName', body).value.trim() } };
+        },
       }],
     });
+    if (r?.newItem) {
+      // Mã mới: thêm vào danh mục để lần sau tìm/quét được ngay
+      const item = { sku: r.newItem.sku, name: r.newItem.name, unit: '', category: '', price: '', barcode: '', alias: '' };
+      try { await Store.addItem(item); } catch (err) { toast('Chưa lưu được mã mới vào danh mục: ' + err.message, 'warn'); }
+      itemBy.set(item.sku, item);
+      if (!index.some((i) => i.sku === item.sku)) index.push(...buildIndex([{ sku: item.sku, name: item.name, keys: [], cat: catOf(item.name)?.key, expected: expBy.has(item.sku) }]));
+      toast(`Đã thêm mã mới ${item.sku} vào danh mục`, 'ok');
+    }
     if (r?.learn && r.sku && tem && tem !== r.sku.replace(/[^A-Z0-9]/g, '')) {
       const entry = index.find((i) => i.sku === r.sku);
       if (entry) addKey(entry, tem);

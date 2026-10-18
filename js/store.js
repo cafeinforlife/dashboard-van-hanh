@@ -41,6 +41,21 @@ async function erpItems() {
   return null;
 }
 
+// Nhân sự đóng gói sẵn (data/staff.json: [Mã NV, Họ tên] — chỉ người đang làm, không có thông tin cá nhân khác)
+const STAFF_VER = 1;
+async function erpStaff() {
+  try { const r = await fetch('data/staff.json'); if (r.ok) return (await r.json()).map(([code, name]) => ({ code, name, phone: '', location: '', branch: '', dept: '', title: '', active: true })); } catch { /* offline */ }
+  return null;
+}
+async function migrateStaff(d) {
+  if ((d.meta?.staffVer || 0) >= STAFF_VER) return;
+  const list = await erpStaff();
+  if (!list) return;
+  const have = new Set(d.staff.map((s) => String(s.code)));
+  d.staff.push(...list.filter((s) => !have.has(String(s.code))));
+  d.meta = { ...d.meta, staffVer: STAFF_VER };
+}
+
 async function seedDb() {
   const h = await sha256('admin:admin123');
   return {
@@ -61,6 +76,7 @@ async function db() {
     for (const t of Object.keys(TABLES)) d[t] ||= [];
     await migrateLocations(d);
     await migrateItems(d);
+    await migrateStaff(d);
     ls.set(K_DB, d);
     _db = d;
     return d;
@@ -160,6 +176,13 @@ const demo = {
     if (!s) throw new Error('Không tìm thấy đợt kiểm kê');
     Object.assign(s, patch); saveDb();
     return s;
+  },
+  async addItem({ item }) {
+    const d = await db();
+    const i = d.items.findIndex((x) => x.sku === item.sku);
+    if (i >= 0) Object.assign(d.items[i], item); else d.items.push(item);
+    saveDb();
+    return { ok: true };
   },
   async setExpected({ id, expected }) {
     const d = await db();
@@ -270,6 +293,11 @@ export const Store = {
   createSession: (session, expected) => impl().createSession({ session, expected }),
   updateSession: (id, patch) => impl().updateSession({ id, patch }),
   deleteSession: (id) => impl().deleteSession({ id }),
+  // Thêm 1 mã hàng mới vào danh mục (khi quét gặp mã chưa có)
+  async addItem(item) {
+    await impl().addItem({ item });
+    if (this._master) this._master.items = [...this._master.items.filter((x) => x.sku !== item.sku), item];
+  },
   // Nạp / nạp lại file tồn kho cho đợt đã có (kiểm trước, đối chiếu sau)
   setExpected: (id, expected) => impl().setExpected({ id, expected }),
   deleteCount: (id) => impl().deleteCount({ id }),

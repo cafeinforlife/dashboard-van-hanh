@@ -1,11 +1,11 @@
 // Service worker: cài sẵn toàn bộ app + thư viện nhận diện để dùng khi mất mạng.
 // - vendor/, data/, assets/: lấy từ bộ nhớ đệm trước (ít thay đổi)
 // - còn lại: ưu tiên mạng (luôn bản mới nhất), mất mạng thì dùng bản đã lưu
-const CACHE = 'kiemke-v2';
+const CACHE = 'kiemke-v3';
 const PRECACHE = [
   './', 'index.html', 'manifest.webmanifest', 'css/app.css',
   'js/app.js', 'js/config.js', 'js/io.js', 'js/ocr.js', 'js/store.js', 'js/theme.js', 'js/util.js',
-  'data/locations.json', 'data/items.json',
+  'data/locations.json', 'data/items.json', 'data/staff.json',
   'vendor/xlsx.full.min.js', 'vendor/tesseract.min.js', 'vendor/worker.min.js',
   'vendor/core/tesseract-core-simd-lstm.wasm.js', 'vendor/core/tesseract-core-lstm.wasm.js', 'vendor/lang/eng.traineddata.gz',
   'assets/icon.svg', 'assets/logo-kingsport.svg', 'assets/logo-kingsport-dark.svg', 'assets/logo-xedienmove.png',

@@ -274,6 +274,14 @@ export function codeLike(text) {
     .sort((a, b) => b.length - a.length)[0] || '';
 }
 
+// Mã hàng đọc được trên tem, giữ nguyên dấu gạch (để điền sẵn khi thêm mã mới): "P/N: MV-CTRL-48V" → "MV-CTRL-48V"
+export function codeGuess(text) {
+  const words = String(text).toUpperCase().split(/\s+/)
+    .map((w) => w.replace(/^(P\/?N|SKU|CODE|MA)[:.]?/, '').replace(/[^A-Z0-9-]/g, '').replace(/^-+|-+$/g, ''))
+    .filter((w) => w.length >= 5 && /\d/.test(w) && /[A-Z]/.test(w) && !findSerial(w));
+  return words.sort((a, b) => (b.includes('-') - a.includes('-')) || b.length - a.length)[0] || '';
+}
+
 export function matchText(text, index, limit = 5) {
   const toks = tokens(text);
   if (!toks.length) return [];

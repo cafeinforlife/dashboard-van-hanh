@@ -22,6 +22,11 @@ function setup() {
   if (!readTable_('users').length) {
     writeTable_('users', [{ username: 'admin', fullname: 'Quản trị hệ thống', role: 'admin', location: '', active: true, password_hash: hash_('admin', 'admin123') }]);
   }
+  // Nạp nhân sự đang làm (Mã NV + Họ tên)
+  if (!readTable_('staff').length) {
+    const st = JSON.parse(UrlFetchApp.fetch('https://cafeinforlife.github.io/dashboard-van-hanh/data/staff.json').getContentText());
+    writeTable_('staff', st.map((x) => ({ code: x[0], name: x[1], active: true })));
+  }
   // Nạp danh sách kho/cửa hàng theo mã Location ERP
   if (!readTable_('locations').length) {
     const res = UrlFetchApp.fetch('https://cafeinforlife.github.io/dashboard-van-hanh/data/locations.json');
@@ -150,6 +155,16 @@ const ACTIONS = {
       Object.assign(s, req.patch);
       writeTable_('sessions', rows);
       return s;
+    });
+  },
+
+  addItem(req) {
+    return withLock_(() => {
+      const it = req.item || {};
+      if (!it.sku || !it.name) throw new Error('Thiếu mã hoặc tên hàng');
+      deleteWhere_('items', (r) => r.sku === it.sku);
+      appendRows_('items', [it]);
+      return { ok: true };
     });
   },
 
