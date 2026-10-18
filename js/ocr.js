@@ -123,10 +123,12 @@ export function initOcr(onProgress) {
     if (!window.Tesseract) throw new Error('Chưa tải được thư viện OCR, kiểm tra kết nối mạng.');
     // Thư viện + dữ liệu nhận diện đóng gói trong app (vendor/) → chạy được khi mất mạng
     const abs = (p) => new URL(p, document.baseURI).href;
+    // Thiếu dữ liệu đóng gói (bản xem trước trên Claude) thì để Tesseract tự tải từ CDN
+    const localLang = await fetch('vendor/lang/eng.traineddata.gz', { method: 'HEAD' }).then((r) => r.ok, () => false);
     const w = await window.Tesseract.createWorker('eng', 1, {
       workerPath: abs('vendor/worker.min.js'),
       corePath: abs('vendor/core'),
-      langPath: abs('vendor/lang'),
+      ...(localLang ? { langPath: abs('vendor/lang') } : {}),
       workerBlobURL: false,
       logger: (m) => onProgress?.(m),
     });
