@@ -6,7 +6,7 @@ import { ls, sha256, uid } from './util.js';
 
 export const TABLES = {
   users:     ['username', 'fullname', 'role', 'location', 'active', 'password_hash'],
-  locations: ['code', 'name', 'region', 'address', 'manager', 'active'],
+  locations: ['code', 'name', 'type', 'branch', 'region', 'address', 'manager', 'active'], // mã = Location Code trong ERP
   items:     ['sku', 'name', 'unit', 'category', 'price', 'barcode', 'alias'],
   staff:     ['code', 'name', 'phone', 'location', 'title', 'active'],
   aliases:   ['alias', 'sku', 'created_by', 'ts'], // mã in trên tem ↔ mã hệ thống (app tự học)
@@ -24,6 +24,13 @@ const isActive = (v) => !(v === false || String(v).toLowerCase() === 'false' || 
 const publicUser = ({ password_hash, ...u }) => u;
 
 /* ---------------- Demo adapter ---------------- */
+// Danh sách kho/cửa hàng theo mã Location của ERP (data/locations.json, tạo từ file Locations.xlsx)
+const LOC_VER = 2;
+async function erpLocations() {
+  try { const r = await fetch('data/locations.json', { cache: 'no-cache' }); if (r.ok) return await r.json(); } catch { /* offline */ }
+  return null;
+}
+
 async function seedDb() {
   const h = await sha256('admin:admin123');
   const locs = [
@@ -47,11 +54,12 @@ async function seedDb() {
   ];
   return {
     users: [{ username: 'admin', fullname: 'Quản trị hệ thống', role: 'admin', location: '', active: true, password_hash: h }],
-    locations: locs.map(([code, name, region]) => ({ code, name, region, address: '', manager: '', active: true })),
+    locations: (await erpLocations()) || locs.map(([code, name, region]) => ({ code, name, type: 'Kho', branch: '', region, address: '', manager: '', active: true })),
+    meta: { locVer: LOC_VER },
     items: items.map(([sku, name, unit, category, price]) => ({ sku, name, unit, category, price, barcode: '', alias: '' })),
     staff: [
-      { code: 'NV01', name: 'Nguyễn Văn A', phone: '', location: 'DNA', title: 'Kỹ thuật viên', active: true },
-      { code: 'NV02', name: 'Trần Thị B', phone: '', location: 'BDU', title: 'Thủ kho', active: true },
+      { code: 'NV01', name: 'Nguyễn Văn A', phone: '', location: 'BH01', title: 'Kỹ thuật viên', active: true },
+      { code: 'NV02', name: 'Trần Thị B', phone: '', location: 'BD01', title: 'Thủ kho', active: true },
     ],
     sessions: [], expected: [], counts: [],
   };
@@ -62,10 +70,26 @@ async function db() {
   if (_db) return _db;
   _db = ls.get(K_DB) || await seedDb();
   for (const t of Object.keys(TABLES)) _db[t] ||= [];
+  await migrateLocations(_db);
   ls.set(K_DB, _db);
   return _db;
 }
 const saveDb = () => ls.set(K_DB, _db);
+
+// Máy đã chạy bản DEMO cũ: nạp danh sách Location ERP, bỏ các địa điểm mẫu chưa dùng
+async function migrateLocations(d) {
+  if ((d.meta?.locVer || 0) >= LOC_VER) return;
+  const erp = await erpLocations();
+  if (!erp) return;
+  const SAMPLE = { DNA: 'BH01', BDU: 'BD01', BRVT: 'BR01', DTR: 'DT01' };
+  for (const s of d.staff) if (SAMPLE[s.location]) s.location = SAMPLE[s.location];
+  const used = new Set([...d.sessions, ...d.users, ...d.staff].map((x) => x.location));
+  const sample = new Set(['DNA', 'BDU', 'BRVT', 'TNI', 'LAN', 'CCI', 'DTR', 'BTH', 'NTH']);
+  const by = new Map(d.locations.filter((l) => !(sample.has(l.code) && !used.has(l.code))).map((l) => [l.code, l]));
+  for (const e of erp) by.set(e.code, { ...by.get(e.code), ...e });
+  d.locations = [...by.values()];
+  d.meta = { ...d.meta, locVer: LOC_VER };
+}
 
 const demo = {
   async login({ username, password }) {

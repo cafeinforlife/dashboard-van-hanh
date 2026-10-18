@@ -17,6 +17,9 @@ export const CONFIG = {
     dongduongIcon: 'assets/logo-dongduong-icon.svg',
   },
 
+  // Thứ tự khu vực trong danh sách địa điểm (khu vực phụ trách lên đầu)
+  regionOrder: ['Đông Nam Bộ', 'TP.HCM', 'Tây Nguyên', 'Nam Trung Bộ', 'ĐB Sông Cửu Long', 'Miền Trung', 'Bắc Trung Bộ', 'Miền Bắc'],
+
   // Icon ngành hàng: nhận theo nhóm hàng hoặc từ khóa trong tên hàng (không dấu)
   categories: [
     { key: 'xe-dien', label: 'Xe điện', words: ['xe may dien', 'xe dap dien', 'xe dien', 'move', 'xe lan dien'] },

@@ -4,7 +4,7 @@
  */
 const TABLES = {
   users:     ['username', 'fullname', 'role', 'location', 'active', 'password_hash'],
-  locations: ['code', 'name', 'region', 'address', 'manager', 'active'],
+  locations: ['code', 'name', 'type', 'branch', 'region', 'address', 'manager', 'active'], // mã = Location Code trong ERP
   items:     ['sku', 'name', 'unit', 'category', 'price', 'barcode', 'alias'],
   staff:     ['code', 'name', 'phone', 'location', 'title', 'active'],
   aliases:   ['alias', 'sku', 'created_by', 'ts'], // mã in trên tem ↔ mã hệ thống (app tự học)
@@ -21,6 +21,11 @@ function setup() {
   Object.keys(TABLES).forEach(sheet_);
   if (!readTable_('users').length) {
     writeTable_('users', [{ username: 'admin', fullname: 'Quản trị hệ thống', role: 'admin', location: '', active: true, password_hash: hash_('admin', 'admin123') }]);
+  }
+  // Nạp danh sách kho/cửa hàng theo mã Location ERP
+  if (!readTable_('locations').length) {
+    const res = UrlFetchApp.fetch('https://cafeinforlife.github.io/dashboard-van-hanh/data/locations.json');
+    writeTable_('locations', JSON.parse(res.getContentText()));
   }
 }
 

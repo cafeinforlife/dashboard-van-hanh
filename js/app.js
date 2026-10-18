@@ -67,6 +67,16 @@ function catIcon(name, category) {
   const c = catOf(name, category);
   return c ? `<i class="cat" title="${esc(c.label)}" style="--ic:url(${new URL(`assets/icons/${c.key}.png`, location.href).href})"></i>` : '';
 }
+// Danh sách địa điểm nhóm theo khu vực · chi nhánh (hơn 300 kho/cửa hàng)
+function locOptions(locs, selected) {
+  const groups = new Map();
+  for (const l of locs) { const g = l.region || 'Khác'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(l); }
+  const rank = (g) => { const i = CONFIG.regionOrder.findIndex((r) => g.startsWith(r)); return i < 0 ? 99 : i; };
+  return [...groups].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b, 'vi')).map(([g, ls]) => `<optgroup label="${esc(g)}">${
+    ls.sort((a, b) => (a.type === 'Kho' ? 0 : 1) - (b.type === 'Kho' ? 0 : 1) || a.code.localeCompare(b.code))
+      .map((l) => `<option value="${esc(l.code)}" ${selected === l.code ? 'selected' : ''}>${esc(l.code)} · ${esc(l.name)}</option>`).join('')
+  }</optgroup>`).join('');
+}
 const locName = (m, code) => m.locations.find((l) => l.code === code)?.name || code || '';
 const active = (r) => !(r.active === false || String(r.active).toLowerCase() === 'false');
 const loading = () => { app.innerHTML = '<div class="center-load"><div class="spinner"></div></div>'; };
@@ -145,7 +155,7 @@ async function viewHome() {
     </section>
     <div class="toolbar">
       <input id="q" placeholder="Tìm theo tên đợt…" value="${esc(f.q)}">
-      <select id="loc"><option value="">Tất cả chi nhánh</option>${m.locations.map((l) => `<option value="${esc(l.code)}" ${f.loc === l.code ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>
+      <select id="loc"><option value="">Tất cả địa điểm</option>${locOptions(m.locations.filter((l) => sessions.some((x) => x.location === l.code)), f.loc)}</select>
       <select id="st"><option value="">Mọi trạng thái</option><option value="open" ${f.st === 'open' ? 'selected' : ''}>Đang kiểm</option><option value="closed" ${f.st === 'closed' ? 'selected' : ''}>Đã chốt</option></select>
       ${Store.can('manage') ? '<a class="btn btn-primary" href="#/new">＋ Tạo đợt mới</a>' : ''}
     </div>
@@ -192,7 +202,7 @@ async function viewNew() {
     <section class="card">
       <h2>1. Thông tin đợt</h2>
       <label>Chi nhánh / địa điểm
-        <select name="location" required>${locs.map((l) => `<option value="${esc(l.code)}" ${me.location === l.code ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>
+        <select name="location" required>${locOptions(locs, me.location)}</select></label>
       <label>Tên đợt<input name="name" required></label>
       <label>Ngày kiểm kê<input type="date" name="date" value="${today}" required></label>
       <label>Ghi chú<textarea name="note" rows="2" placeholder="VD: Kiểm kê định kỳ cuối tháng"></textarea></label>
@@ -642,7 +652,7 @@ async function viewReport(id) {
 
 /* ================= Danh mục (quản trị) ================= */
 const ADMIN = {
-  locations: { title: 'Địa điểm', key: 'code', cols: [['code', 'Mã'], ['name', 'Tên chi nhánh'], ['region', 'Khu vực'], ['address', 'Địa chỉ'], ['manager', 'Phụ trách'], ['active', 'Hoạt động', 'bool']] },
+  locations: { title: 'Địa điểm', key: 'code', cols: [['code', 'Code'], ['name', 'Name'], ['type', 'Loại'], ['branch', 'Mã chi nhánh'], ['region', 'Khu vực · Chi nhánh'], ['address', 'Địa chỉ'], ['manager', 'Phụ trách'], ['active', 'Hoạt động', 'bool']] },
   items: { title: 'Hàng hóa / linh kiện', key: 'sku', cols: [['sku', 'Mã hàng'], ['name', 'Tên hàng'], ['unit', 'ĐVT'], ['category', 'Nhóm hàng'], ['price', 'Đơn giá', 'num'], ['barcode', 'Mã vạch / mã phụ'], ['alias', 'Mã khác (cách nhau dấu ,)']] },
   staff: { title: 'Nhân sự kiểm kê', key: 'code', cols: [['code', 'Mã NV'], ['name', 'Họ tên'], ['phone', 'SĐT'], ['location', 'Chi nhánh', 'loc'], ['title', 'Chức danh'], ['active', 'Hoạt động', 'bool']] },
   aliases: { title: 'Mã tem đã học', key: 'alias', cols: [['alias', 'Chữ in trên tem'], ['sku', 'Mã hàng hệ thống'], ['created_by', 'Người dạy']] },
@@ -677,7 +687,7 @@ async function viewAdmin(tab = 'items') {
     const v = r[k] ?? '';
     if (type === 'bool') return `<input type="checkbox" data-i="${i}" data-k="${k}" ${active(r) ? 'checked' : ''}>`;
     if (type === 'role') return `<select data-i="${i}" data-k="${k}">${Object.entries(ROLES).map(([rk, rl]) => `<option value="${rk}" ${v === rk ? 'selected' : ''}>${rl}</option>`).join('')}</select>`;
-    if (type === 'loc') return `<select data-i="${i}" data-k="${k}"><option value="">—</option>${m.locations.map((l) => `<option value="${esc(l.code)}" ${v === l.code ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select>`;
+    if (type === 'loc') return `<select data-i="${i}" data-k="${k}"><option value="">—</option>${locOptions(m.locations, v)}</select>`;
     return `<input data-i="${i}" data-k="${k}" value="${esc(v)}" ${type === 'num' ? 'inputmode="decimal"' : ''} ${type === 'pw' ? 'type="password" autocomplete="new-password" placeholder="••••"' : ''}>`;
   };
   const draw = () => {

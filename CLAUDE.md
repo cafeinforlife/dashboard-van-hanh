@@ -27,6 +27,7 @@ Thẻ giá xe (hangtag) KHÔNG có mã hàng → kiểm kê xe nên quét số k
 
 ## Dữ liệu ERP (Business Central / NAV)
 - Bảng giá xuất "Lines": `Product No.`, `Description`, `Unit of Measure Code`, `Unit Price`; một mã lặp nhiều dòng theo nhóm giá (B2C…) → lấy dòng đầu.
+- Location (kho/cửa hàng): `data/locations.json` tạo từ Locations.xlsx của ERP — 300 địa điểm (42 kho, 257 cửa hàng, 1 VP), 15 chi nhánh (nhóm theo "KS Customer No." BD00, BH00, BR00, HO00…). Bỏ dòng nhóm không tên và TRANS-IN/OUT. Ninh Thuận = HO39 (thuộc CN HCM).
 - Báo cáo Nhập-Xuất-Tồn: tiêu đề song ngữ 2 dòng ở dòng 8; cột `Mã hàng (Item)`, `Số lượng cuối kỳ (Ending Balance)`; mã kho ở đầu file `Kho (Location): BR01`; dòng cuối "Tổng theo kho".
 - Mã ghế massage dạng `KMC0B10T1PRD`, `KMCVG89T5NGY`, `KMC00G16S4BK`, `KMC0G25S4DBK`; linh kiện dạng `KGMB7-A48`, `KXLD10-A12`.
 - Tem trên máy có thể in mã KHÁC ERP (tem B10 in `KMC0T10PRD`) → dùng tính năng "học mã tem" (bảng `aliases`). Tem serial: `302510280211`, `OYL2604220077`.
