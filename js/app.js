@@ -1,7 +1,7 @@
 import { CONFIG } from './config.js';
 import { Store, ROLES } from './store.js';
 import { applyTheme, getTheme, setTheme } from './theme.js';
-import { Camera, initOcr, ocrReady, recognize, buildIndex, matchText, modelKeys, findSerial, addKey, codeLike } from './ocr.js';
+import { Camera, initOcr, ocrReady, recognize, buildIndex, matchText, matchByModel, modelKeys, findSerial, addKey, codeLike } from './ocr.js';
 import { readSheet, detectColumns, rowsToRecords, downloadTemplate, reconcile, exportReport, exportTable, STATUS } from './io.js';
 import { $, $$, esc, fold, num, fmt, fmtMoney, fmtDate, pct, uid, toast, modal, confirmBox, beep, debounce, ls } from './util.js';
 
@@ -338,8 +338,8 @@ async function viewCount(id) {
   for (const a of m.aliases || []) learned.set(a.sku, [...(learned.get(a.sku) || []), a.alias]);
   const keysOf = (sku, name) => { const it = itemBy.get(sku); return [it?.barcode, ...String(it?.alias || '').split(/[,;|]/), ...modelKeys(it?.name || name), ...(learned.get(sku) || [])].filter(Boolean); };
   const index = buildIndex([
-    ...expected.map((e) => ({ sku: e.sku, name: e.name || itemBy.get(e.sku)?.name || '', keys: keysOf(e.sku, e.name), expected: true })),
-    ...m.items.filter((i) => !expBy.has(i.sku)).map((i) => ({ sku: i.sku, name: i.name, keys: keysOf(i.sku, i.name), expected: false })),
+    ...expected.map((e) => ({ sku: e.sku, name: e.name || itemBy.get(e.sku)?.name || '', keys: keysOf(e.sku, e.name), cat: catOf(e.name || itemBy.get(e.sku)?.name, itemBy.get(e.sku)?.category)?.key, expected: true })),
+    ...m.items.filter((i) => !expBy.has(i.sku)).map((i) => ({ sku: i.sku, name: i.name, keys: keysOf(i.sku, i.name), cat: catOf(i.name, i.category)?.key, expected: false })),
   ]);
   const closed = session.status === 'closed';
   const team = String(session.team || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -463,6 +463,7 @@ async function viewCount(id) {
       $('#mc', body).innerHTML = list.length ? list.map((c) => `
         <button type="button" class="cand ${c.sku === sel ? 'on' : ''}" data-sku="${esc(c.sku)}">
           <b class="mono">${esc(c.sku)}</b>${c.expected ? '' : ' <span class="pill pill-warn">Ngoài DS</span>'}
+          ${c.reason ? `<small class="why">🔎 Khớp theo ${esc(c.reason)}</small>` : ''}
           <small>${esc(c.name)}${expBy.has(c.sku) ? ` · đã đếm ${fmt(gotOf(c.sku))}/${fmt(expBy.get(c.sku).qty)}` : ''}</small>
           ${c.score != null ? `<em>${Math.round(c.score * 100)}%</em>` : ''}
         </button>`).join('') : '<p class="muted">Không tìm thấy mã phù hợp. Gõ để tìm, hoặc nhập mã mới rồi bấm Ghi nhận.</p>';
@@ -513,6 +514,13 @@ async function viewCount(id) {
         const r2 = await recognize(canvas.alt);
         const c2 = matchText(r2.text, index);
         if (c2.length || !text.trim()) { text = r2.text; cands = c2; }
+      }
+      // Lớp 2: mã không khớp chắc chắn → đối chiếu theo nhóm sản phẩm + model trên tem
+      if (!cands[0] || cands[0].score < 0.9) {
+        const byModel = matchByModel(text, index);
+        const seen = new Map(cands.map((c) => [c.sku, c]));
+        for (const c of byModel) if (!seen.has(c.sku) || seen.get(c.sku).score < c.score) seen.set(c.sku, c);
+        cands = [...seen.values()].sort((a, b) => b.score - a.score || b.expected - a.expected).slice(0, 6);
       }
       const top = cands[0];
       $('#ocrOut').innerHTML = `<img src="${canvas.toDataURL('image/png')}" alt=""><div><small class="muted">OCR:</small> <code>${esc(text.trim().replace(/\s+/g, ' ').slice(0, 80) || '(không đọc được)')}</code>

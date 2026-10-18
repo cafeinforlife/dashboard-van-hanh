@@ -255,6 +255,8 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 .cand { position: relative; text-align: left; font: inherit; color: var(--text); background: var(--surface); border: 2px solid var(--line); border-radius: 10px; padding: 10px 50px 10px 12px; cursor: pointer; }
 .cand small { display: block; color: var(--muted); }
 .cand em { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-style: normal; font-weight: 700; color: var(--muted); font-size: .8rem; }
+.cand .why { color: var(--accent); font-weight: 600; }
+:root[data-theme="dark"] .cand .why { color: var(--warn); }
 .cand.on { border-color: var(--primary); background: var(--primary-soft); }
 .stepper { display: flex; gap: 6px; }
 .stepper button { width: 52px; font-size: 1.3rem; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); color: var(--text); cursor: pointer; }

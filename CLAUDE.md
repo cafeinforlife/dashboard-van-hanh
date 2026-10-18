@@ -38,7 +38,7 @@ Thẻ giá xe (hangtag) KHÔNG có mã hàng → kiểm kê xe nên quét số k
 
 ## Kỹ thuật
 - Frontend tĩnh (vanilla JS module), GitHub Pages; backend Google Apps Script + Sheets (`backend/Code.gs`), chế độ DEMO dùng localStorage.
-- OCR: Tesseract.js, nhị phân Otsu KHÔNG tự đảo màu (tem trắng trên thân máy đen), lượt 2 ảnh xám; so khớp mờ + chuỗi con + model trong tên hàng.
+- OCR: Tesseract.js, nhị phân Otsu KHÔNG tự đảo màu (tem trắng trên thân máy đen), lượt 2 ảnh xám. Đối chiếu 2 lớp: (1) so khớp mờ mã + chuỗi con + mã tem đã học; (2) nếu lớp 1 < 90%: NHÓM SẢN PHẨM trên tem (GHẾ MASSAGE…) + MÃ MODEL (B10, G89NEW…) → hàng cùng nhóm + model, ưu tiên hàng trong phiếu tồn kho, thành phẩm trước linh kiện; điểm tối đa 89% nên luôn để người kiểm chọn (không tự cộng ở chế độ quét liên tục).
 - Icon ngành hàng `assets/icons/` (mặt nạ alpha, tô màu bằng CSS mask): 5 PNG người dùng cung cấp + SVG tự vẽ: thiet-bi-y-te (máy đo huyết áp, xe lăn, giường điện/cơ, ghế bô, ghế tập đi), qua-tang (bóng/thảm yoga, con lăn bụng, áo trùm, áo mưa, nón BH, túi vải, bình giữ nhiệt…), hang-hoa (mặc định khi không xác định: bồn rửa, giàn tạ, tạ…). Quy tắc từ khóa ở `CONFIG.categories`.
 - Nhân sự: đồng bộ từ Google Sheet HR (link chỉ lưu trên máy/admin, KHÔNG commit — repo public, sheet có SĐT/email/ngày sinh). Chỉ lấy Mã NV, Họ tên, Chi nhánh, Bộ phận, Vị trí, Trạng thái. 66 dòng/45 đang làm, Bảo hành + Kho vận, Đông Nam Bộ 1–4. Người kiểm: chọn danh sách hoặc gõ tay.
 - Camera: khung 16:10 gọn (≤36dvh), zoom 1×/2×/3×(/5×) — zoom phần cứng nếu track hỗ trợ, không thì zoom số.

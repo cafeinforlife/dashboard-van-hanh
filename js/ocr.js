@@ -1,6 +1,6 @@
 // Camera + nhận diện mã hàng bằng OCR (Tesseract.js chạy ngay trên điện thoại, không tốn phí API)
 import { CONFIG } from './config.js';
-import { normCode } from './util.js';
+import { normCode, fold } from './util.js';
 
 /* ---------- Camera ---------- */
 export class Camera {
@@ -199,8 +199,56 @@ export function buildIndex(entries) {
   return entries.map((e) => {
     const keys = [e.sku, ...(e.keys || [])].map(normCode).filter((k) => k.length >= 3);
     const skeys = keys.map(skel);
-    return { ...e, nkeys: keys, skeys, bkeys: skeys.map((k) => [...bigrams(k)]) };
+    return { ...e, nkeys: keys, skeys, bkeys: skeys.map((k) => [...bigrams(k)]), models: itemModels(e.sku, e.name) };
   });
+}
+
+/* ---------- Lớp 2: đối chiếu theo NHÓM SẢN PHẨM + MÃ MODEL ----------
+ * Dùng khi mã in trên tem không khớp ERP (VD tem B10 in KMC0T10PRD, ERP là KMC0B10T1PRD):
+ * tem có chữ "GHẾ MASSAGE" + model "B10" → tìm hàng cùng nhóm + cùng model, ưu tiên hàng trong phiếu tồn kho. */
+
+// Model của 1 mã hàng: lấy từ "model: …" trong tên ERP, từ cấu trúc mã thành phẩm KMC…, hoặc mã dạng chữ+số trong tên.
+export function itemModels(sku, name) {
+  const out = new Set();
+  const add = (t) => { t = normCode(t); if (/^[A-Z]{1,3}\d{1,3}[A-Z]{0,3}$/.test(t)) { out.add(t); out.add(t.replace(/(NEW|SONIC|PRO|PLUS)$/, '')); } };
+  const n = String(name || '').toUpperCase();
+  const m = n.match(/MODEL\s*:?\s*([^,(;]+)/);
+  for (const w of (m ? m[1] : n).split(/[\s/]+/)) if (/\d/.test(w) && /[A-Z]/.test(w)) add(w);
+  const k = String(sku || '').toUpperCase().match(/^KMC[0V]*([GB])0*(\d{1,3})/);   // KMC0B10T1PRD → B10
+  if (k) add(k[1] + k[2]);
+  return [...out].filter((t) => t.length >= 2);
+}
+
+// Nhóm sản phẩm đọc được trên tem (OCR không dấu, có thể dính liền: "GHEMASSAGEDUNGDIEN")
+export function textCategory(text) {
+  const t = fold(text).replace(/[^a-z0-9]/g, '');
+  return CONFIG.categories.find((c) => c.words.some((w) => w.length >= 5 && t.includes(w.replace(/\s/g, ''))))?.key || '';
+}
+
+let modelCache = null;
+export function matchByModel(text, index, limit = 5) {
+  const T = normCode(text), sT = skel(T);
+  const words = new Set(String(text).toUpperCase().split(/\s+/).map(normCode));
+  if (modelCache?.index !== index) {
+    const all = new Set(); index.forEach((it) => it.models.forEach((x) => all.add(x)));
+    modelCache = { index, models: [...all].sort((a, b) => b.length - a.length) };
+  }
+  // Model xuất hiện trên tem: ≥3 ký tự cho phép nằm lẫn trong chuỗi dính liền; 2 ký tự (G9, B7) phải đứng riêng
+  const found = modelCache.models.filter((x) => (x.length >= 3 ? T.includes(x) || sT.includes(skel(x)) : words.has(x)));
+  if (!found.length) return [];
+  const cat = textCategory(text);
+  const best = found[0].length;
+  const res = [];
+  for (const it of index) {
+    const hit = found.find((x) => it.models.includes(x));
+    if (!hit) continue;
+    if (cat && it.cat !== cat) continue;
+    let score = 0.78 + (cat ? 0.06 : 0) + (hit.length === best ? 0.03 : 0) + (it.expected ? 0.02 : 0);
+    // Không rõ nhóm: ưu tiên thành phẩm (mã không có gạch ngang) hơn linh kiện (KGMB10-A23…)
+    if (!cat && (it.sku.includes('-') || !it.cat || it.cat === 'hang-hoa')) score -= 0.08;
+    res.push({ ...it, score: Math.min(0.89, score), reason: `${cat ? CONFIG.categories.find((c) => c.key === cat).label + ' + ' : ''}model ${hit}` });
+  }
+  return res.sort((a, b) => b.score - a.score || b.expected - a.expected).slice(0, limit);
 }
 
 // Thêm mã phụ vào 1 mục của chỉ mục (dùng khi app vừa học được mã tem mới)
