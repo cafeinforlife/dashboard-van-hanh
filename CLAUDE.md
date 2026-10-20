@@ -37,6 +37,7 @@ Thẻ giá xe (hangtag) KHÔNG có mã hàng → kiểm kê xe nên quét số k
 - Tem trên máy có thể in mã KHÁC ERP (tem B10 in `KMC0T10PRD`) → dùng tính năng "học mã tem" (bảng `aliases`). Tem serial: `302510280211`, `OYL2604220077`.
 
 ## Kỹ thuật
+- HOSTING CHÍNH THỨC: GitHub Pages https://cafeinforlife.github.io/dashboard-van-hanh/ (người dùng chốt 20/10/2026; KHÔNG dùng VM GCE instance-20261011-115615 — chỉ giữ deploy/setup-gce.sh dự phòng).
 - Frontend tĩnh (vanilla JS module), GitHub Pages (nhánh `gh-pages` = bản chạy, push cùng lúc với nhánh dev) + bản Artifact trên Claude để góp ý. Backend tùy chọn Google Apps Script + Sheets (`backend/Code.gs`).
 - Quét gặp mã không có trong danh mục: nút "＋ Thêm mã mới" (mã + tên + SL) → lưu vào danh mục (Store.addItem), điền sẵn mã đọc từ tem (codeGuess giữ dấu gạch, bỏ tiền tố P/N).
 - QUY TRÌNH: kiểm trước — đối chiếu sau. Danh mục (data/items.json + bảng giá người dùng nạp) là NGUỒN gợi ý mã; đợt không cần file tồn kho; Báo cáo → "Nạp file tồn kho" (Store.setExpected) để đối chiếu, nạp lại được. Mã tồn sổ sách = 0 mà không quét thấy bị bỏ khỏi đối chiếu.
