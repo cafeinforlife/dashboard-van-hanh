@@ -24,14 +24,14 @@ export const CONFIG = {
   // Thứ tự = ưu tiên (mục trên khớp trước). Không khớp mục nào → icon "Hàng hóa khác".
   categories: [
     { key: 'thiet-bi-y-te', label: 'Thiết bị y tế', file: 'thiet-bi-y-te.svg',
-      words: ['huyet ap', 'xe lan', 'giuong dien', 'giuong co', 'giuong y te', 'giuong benh', 'ghe bo', 'ghe tap di', 'khung tap di', 'nhiet ke', 'may do duong huyet', 'can suc khoe'] },
+      words: ['huyet ap', 'xe lan', 'giuong dien', 'giuong co', 'giuong y te', 'giuong benh', 'ghe bo', 'ghe ngoi co bo', 'bo ve sinh', 'ghe tap di', 'khung tap di', 'nhiet ke', 'may do duong huyet', 'can suc khoe'] },
     { key: 'qua-tang', label: 'Quà tặng', file: 'qua-tang.svg',
       words: ['qua tang', 'bong yoga', 'tham yoga', 'yoga', 'con lan tap bung', 'con lan tro luc', 'con lan bung', 'ao trum', 'bat ao trum', 'ao mua', 'non bao hiem', 'mu bao hiem', 'tui vai', 'tui xach', 'binh giu nhiet', 'ly giu nhiet', 'coc giu nhiet', 'tham trai san', 'gift'] },
     { key: 'xe-dien', label: 'Xe điện', words: ['xe may dien', 'xe dap dien', 'xe dien', 'move'] },
     { key: 'ghe-massage', label: 'Ghế massage', words: ['ghe massage', 'ghe mat xa'] },
     { key: 'may-chay-bo', label: 'Máy chạy bộ', words: ['may chay bo', 'bang tai', 'chay bo'] },
     { key: 'xe-dap-tap', label: 'Xe đạp tập', words: ['xe dap tap', 'xe dap the duc', 'xe dap'] },
-    { key: 'sung-massage', label: 'Súng massage', words: ['sung massage', 'may massage cam tay', 'massage'] },
+    { key: 'sung-massage', label: 'Máy massage cá nhân', words: ['sung massage', 'may massage cam tay', 'massage'] },
   ],
   otherCategory: { key: 'hang-hoa', label: 'Hàng hóa khác', file: 'hang-hoa.svg' },
 

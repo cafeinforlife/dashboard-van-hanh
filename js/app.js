@@ -19,13 +19,23 @@ const logos = () => `
   <span class="logo-sep"></span>
   <img src="${CONFIG.logos.move}" alt="Xe điện MOVE" class="logo logo-move">`;
 
+// Bộ icon nét mảnh (thay ký tự ▦ ☰ ⚙ ◐ hiển thị không đều trên iPhone)
+const svg = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  home: svg('<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12l2 2 4-4M9 17h6"/>'),
+  plus: svg('<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>'),
+  catalog: svg('<path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/>'),
+  settings: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+  theme: svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
+};
+
 function shell(active, title, inner) {
   const u = Store.user;
   const nav = [
-    ['#/', '▦', 'Đợt kiểm kê', 'home'],
-    Store.can('manage') && ['#/new', '＋', 'Tạo đợt', 'new'],
-    Store.can('admin') && ['#/admin', '☰', 'Danh mục', 'admin'],
-    ['#/settings', '⚙', 'Cài đặt', 'settings'],
+    ['#/', ICON.home, 'Đợt kiểm kê', 'home'],
+    Store.can('manage') && ['#/new', ICON.plus, 'Tạo đợt', 'new'],
+    Store.can('admin') && ['#/admin', ICON.catalog, 'Danh mục', 'admin'],
+    ['#/settings', ICON.settings, 'Cài đặt', 'settings'],
   ].filter(Boolean);
   const q = Store.queue().length;
   return `
@@ -35,7 +45,7 @@ function shell(active, title, inner) {
     <div class="top-right">
       ${Store.personal ? '<span class="pill pill-warn" title="Dữ liệu lưu trên máy này — nhớ sao lưu định kỳ">BẢN CÁ NHÂN</span>' : ''}
       <span class="pill pill-info sync ${q ? '' : 'hide'}" title="Lượt quét chờ đồng bộ">⟳ ${q}</span>
-      <button class="icon-btn" id="themeToggle" title="Đổi sáng/tối">◐</button>
+      <button class="icon-btn" id="themeToggle" title="Đổi sáng/tối" aria-label="Đổi sáng/tối">${ICON.theme}</button>
       <span class="who"><b>${esc(u?.fullname || u?.username)}</b><small>${esc(ROLES[u?.role] || '')}</small></span>
     </div>
   </header>
@@ -68,11 +78,17 @@ function catIcon(name, category) {
   return `<i class="cat" title="${esc(c.label)}" style="--ic:url(${new URL(`assets/icons/${c.file || c.key + '.png'}`, location.href).href})"></i>`;
 }
 // Danh sách địa điểm nhóm theo khu vực · chi nhánh (hơn 300 kho/cửa hàng)
+// Địa điểm "của tôi / dùng gần đây" lên đầu danh sách
+const recentLocs = () => [...new Set([Store.user?.location, ...ls.get('kk_recent_locs', [])].filter(Boolean))].slice(0, 5);
+const rememberLoc = (code) => ls.set('kk_recent_locs', [code, ...ls.get('kk_recent_locs', []).filter((c) => c !== code)].slice(0, 5));
 function locOptions(locs, selected) {
+  const by = new Map(locs.map((l) => [l.code, l]));
+  const mine = recentLocs().map((c) => by.get(c)).filter(Boolean);
+  const top = mine.length ? `<optgroup label="⭐ Của tôi / dùng gần đây">${mine.map((l) => `<option value="${esc(l.code)}">${esc(l.code)} · ${esc(l.name)}</option>`).join('')}</optgroup>` : '';
   const groups = new Map();
   for (const l of locs) { const g = l.region || 'Khác'; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(l); }
   const rank = (g) => { const i = CONFIG.regionOrder.findIndex((r) => g.startsWith(r)); return i < 0 ? 99 : i; };
-  return [...groups].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b, 'vi')).map(([g, ls]) => `<optgroup label="${esc(g)}">${
+  return top + [...groups].sort(([a], [b]) => rank(a) - rank(b) || a.localeCompare(b, 'vi')).map(([g, ls]) => `<optgroup label="${esc(g)}">${
     ls.sort((a, b) => (a.type === 'Kho' ? 0 : 1) - (b.type === 'Kho' ? 0 : 1) || a.code.localeCompare(b.code))
       .map((l) => `<option value="${esc(l.code)}" ${selected === l.code ? 'selected' : ''}>${esc(l.code)} · ${esc(l.name)}</option>`).join('')
   }</optgroup>`).join('');
@@ -351,6 +367,7 @@ async function viewNew() {
         name: f.name.value.trim(), location: f.location.value, date: f.date.value, note: f.note.value.trim(),
         team: $$('#team input:checked').map((i) => i.value).join(', '), created_by: me.username,
       }, recs);
+      rememberLoc(f.location.value);
       toast('Đã tạo đợt kiểm kê', 'ok');
       location.hash = `#/s/${s.id}/count`;
     } catch (err) { toast(err.message, 'error'); btn.disabled = false; btn.textContent = 'Tạo đợt kiểm kê'; }
@@ -691,6 +708,16 @@ async function viewReport(id) {
   const [m, { session, expected, counts }] = await Promise.all([Store.master(), Store.getSession(id)]);
   const { rows, summary: s } = reconcile(expected, counts, m.items);
   const itemCat = new Map(m.items.map((i) => [i.sku, i.category]));
+  for (const r of rows) { const c = catOf(r.name, itemCat.get(r.sku)) || CONFIG.otherCategory; r.catKey = c.key; r.catLabel = c.label; }
+  // Tổng hợp theo nhóm hàng
+  const byCat = [...rows.reduce((mp, r) => {
+    const g = mp.get(r.catKey) || { key: r.catKey, label: r.catLabel, n: 0, exp: 0, got: 0, short: 0, over: 0, value: 0, issues: 0 };
+    g.n++; g.exp += r.exp; g.got += r.got; g.value += r.value || 0;
+    if (r.diff < 0) g.short -= r.diff; else g.over += r.diff;
+    if (r.status !== 'ok') g.issues++;
+    return mp.set(r.catKey, g);
+  }, new Map()).values()].sort((a, b) => b.issues - a.issues || b.n - a.n);
+  let catFilter = '';
   const staffNames = session.team || [...new Set(counts.map((c) => c.staff).filter(Boolean))].join(', ');
   const closed = session.status === 'closed';
   let filter = '';
@@ -727,13 +754,21 @@ async function viewReport(id) {
       <button data-f="" class="on">Tất cả <b>${rows.length}</b></button>
       ${['ok', 'short', 'over', 'none', 'extra'].map((k) => `<button data-f="${k}"><i class="dot st-${STATUS[k].cls}"></i>${STATUS[k].label} <b>${s[k]}</b> <small>${pct(s[k], tot)}%</small></button>`).join('')}
     </div>
-    <div class="toolbar"><input id="q" placeholder="Tìm mã / tên…"></div>
+    <div class="toolbar"><input id="q" placeholder="Tìm mã / tên…">
+      <select id="catf"><option value="">Mọi nhóm hàng</option>${byCat.map((g) => `<option value="${g.key}">${esc(g.label)} (${g.n})</option>`).join('')}</select></div>
     <div class="table-wrap" id="tbl"></div>
-  </section>`);
+  </section>
+  ${byCat.length > 1 ? `<section class="card" id="bycat">
+    <h2>Theo nhóm hàng</h2>
+    <div class="table-wrap"><table class="tbl"><thead><tr><th>Nhóm hàng</th><th class="r">Số mã</th><th class="r">Sổ sách</th><th class="r">Thực tế</th><th class="r">Thiếu</th><th class="r">Thừa</th><th class="r">Giá trị CL</th><th class="r">Mã lệch</th></tr></thead>
+    <tbody>${byCat.map((g) => `<tr data-cat="${g.key}" class="clickable"><td>${catIcon('', g.key)}${esc(g.label)}</td><td class="r">${fmt(g.n)}</td><td class="r">${fmt(g.exp)}</td><td class="r">${fmt(g.got)}</td>
+      <td class="r ${g.short ? 'neg' : ''}">${g.short ? fmt(g.short) : ''}</td><td class="r ${g.over ? 'pos' : ''}">${g.over ? fmt(g.over) : ''}</td>
+      <td class="r ${g.value < 0 ? 'neg' : g.value > 0 ? 'pos' : ''}">${g.value ? fmt(g.value) : ''}</td><td class="r"><b>${g.issues}</b></td></tr>`).join('')}</tbody></table></div>
+  </section>` : ''}`);
 
   const draw = () => {
     const q = fold($('#q').value);
-    const list = rows.filter((r) => (!filter || r.status === filter) && (!q || fold(r.sku + ' ' + r.name).includes(q)))
+    const list = rows.filter((r) => (!filter || r.status === filter) && (!catFilter || r.catKey === catFilter) && (!q || fold(r.sku + ' ' + r.name).includes(q)))
       .sort((a, b) => Math.abs(b.value) - Math.abs(a.value) || Math.abs(b.diff) - Math.abs(a.diff));
     $('#tbl').innerHTML = `<table class="tbl"><thead><tr><th>Mã hàng</th><th>Tên hàng</th><th class="r">Sổ sách</th><th class="r">Thực tế</th><th class="r">Chênh lệch</th><th class="r">Giá trị CL</th><th>Kết quả</th></tr></thead>
       <tbody>${list.map((r) => `<tr><td class="mono">${catIcon(r.name, itemCat.get(r.sku))}${esc(r.sku)}</td><td>${esc(r.name)}<small class="muted">${r.bin ? ' · ' + esc(r.bin) : ''}</small></td>
@@ -746,6 +781,13 @@ async function viewReport(id) {
     filter = b.dataset.f; $$('#chips button').forEach((x) => x.classList.toggle('on', x === b)); draw();
   };
   $('#q').addEventListener('input', debounce(draw, 150));
+  $('#catf').onchange = (e) => { catFilter = e.target.value; draw(); };
+  // Bấm 1 dòng nhóm hàng → lọc bảng chi tiết theo nhóm đó
+  $('#bycat')?.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-cat]'); if (!tr) return;
+    catFilter = tr.dataset.cat; $('#catf').value = catFilter; draw();
+    $('#tbl').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   $('#stockFile').addEventListener('change', async (ev) => {
     const file = ev.target.files[0]; ev.target.value = '';
     if (!file) return;

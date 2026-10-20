@@ -171,11 +171,22 @@ export function exportReport({ session, locationName, rows, summary, counts, sta
   ws1['!cols'] = [{ wch: 26 }, { wch: 36 }, { wch: 16 }, { wch: 6 }, { wch: 20 }];
   ws1['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
 
-  const head = ['STT', 'Mã hàng', 'Tên hàng', 'ĐVT', 'Vị trí', 'SL sổ sách', 'SL thực tế', 'Chênh lệch', 'Đơn giá', 'Giá trị chênh lệch', 'Kết quả'];
-  const body = rows.map((r, i) => [i + 1, r.sku, r.name, r.unit, r.bin, r.exp, r.got, r.diff, r.price, r.value, STATUS[r.status].label]);
+  const head = ['STT', 'Mã hàng', 'Tên hàng', 'Nhóm hàng', 'ĐVT', 'Vị trí', 'SL sổ sách', 'SL thực tế', 'Chênh lệch', 'Đơn giá', 'Giá trị chênh lệch', 'Kết quả'];
+  const body = rows.map((r, i) => [i + 1, r.sku, r.name, r.catLabel || '', r.unit, r.bin, r.exp, r.got, r.diff, r.price, r.value, STATUS[r.status].label]);
   const ws2 = XL.utils.aoa_to_sheet([head, ...body]);
-  ws2['!cols'] = [5, 18, 38, 7, 10, 11, 11, 11, 12, 16, 11].map((wch) => ({ wch }));
-  ws2['!autofilter'] = { ref: `A1:K${body.length + 1}` };
+  ws2['!cols'] = [5, 18, 38, 16, 7, 10, 11, 11, 11, 12, 16, 11].map((wch) => ({ wch }));
+  ws2['!autofilter'] = { ref: `A1:L${body.length + 1}` };
+
+  // Tổng hợp theo nhóm hàng
+  const cats = new Map();
+  for (const r of rows) {
+    const k = r.catLabel || 'Khác';
+    const g = cats.get(k) || [k, 0, 0, 0, 0, 0, 0, 0];
+    g[1]++; g[2] += r.exp; g[3] += r.got; if (r.diff < 0) g[4] -= r.diff; else g[5] += r.diff; g[6] += r.value || 0; if (r.status !== 'ok') g[7]++;
+    cats.set(k, g);
+  }
+  const ws4 = XL.utils.aoa_to_sheet([['Nhóm hàng', 'Số mã', 'SL sổ sách', 'SL thực tế', 'SL thiếu', 'SL thừa', 'Giá trị chênh lệch', 'Số mã lệch'], ...[...cats.values()].sort((a, b) => b[7] - a[7])]);
+  ws4['!cols'] = [20, 8, 11, 11, 10, 10, 18, 11].map((wch) => ({ wch }));
 
   const inList = new Set(rows.filter((r) => r.status !== 'extra').map((r) => r.sku));
   const ws3 = XL.utils.aoa_to_sheet([
@@ -188,6 +199,7 @@ export function exportReport({ session, locationName, rows, summary, counts, sta
   const wb = XL.utils.book_new();
   XL.utils.book_append_sheet(wb, ws1, 'Tong hop');
   XL.utils.book_append_sheet(wb, ws2, 'Doi chieu');
+  XL.utils.book_append_sheet(wb, ws4, 'Theo nhom hang');
   XL.utils.book_append_sheet(wb, ws3, 'Nhat ky quet');
   const safe = fold(`${session.name}_${session.date}`).replace(/[^a-z0-9]+/g, '_');
   XL.writeFile(wb, `Kiem_ke_${safe}.xlsx`);
