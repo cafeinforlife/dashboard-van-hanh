@@ -278,6 +278,8 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 .accent-chip { background: var(--accent); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: .85rem; font-weight: 600; }
 details.card > summary { cursor: pointer; margin-bottom: 8px; }
 details.card:not([open]) > summary { margin-bottom: 0; }
+.help ol { padding-left: 20px; margin: 0; } .help li { margin-bottom: 8px; }
+.help code.copy { display: inline-block; margin-top: 4px; padding: 4px 8px; background: var(--surface-2); border-radius: 6px; user-select: all; word-break: break-all; }
 .tips { padding-left: 18px; margin: 0; } .tips li { margin-bottom: 6px; }
 
 /* ===== Modal / toast ===== */

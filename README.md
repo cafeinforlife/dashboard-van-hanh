@@ -18,7 +18,7 @@ Vai trò: **Quản trị** (toàn quyền) · **Quản lý** (tạo/chốt đợ
 ## Bản cá nhân (mặc định)
 Không cài máy chủ → app chạy **Bản cá nhân**: mở link, nhập tên + chọn kho là dùng, không cần tài khoản.
 - Dữ liệu lưu trên chính máy đó; **sao lưu / khôi phục** bằng file trong Cài đặt.
-- Có sẵn 300 địa điểm và 6.274 mã hàng (không kèm đơn giá — nhập bảng giá trong Danh mục nếu cần tính giá trị chênh lệch).
+- Có sẵn danh sách địa điểm; **danh mục hàng hóa người dùng tự nạp** (Danh mục → Nhập Excel). Hướng dẫn: [HUONG-DAN.md](HUONG-DAN.md) hoặc trong app Cài đặt → 📖 Hướng dẫn.
 - Toàn bộ thư viện nằm trong `vendor/` → sau lần mở đầu tiên **chạy được khi mất mạng**.
 - iPhone: mở bằng Safari → Chia sẻ → **Thêm vào MH chính** (bắt buộc nên làm: Safari có thể xóa dữ liệu web không dùng sau 7 ngày nếu không thêm vào màn hình chính).
 

@@ -109,6 +109,7 @@ const routes = [
   [/^#\/s\/([^/]+)\/report$/, viewReport],
   [/^#\/admin(?:\/(\w+))?$/, viewAdmin, false, 'admin'],
   [/^#\/settings$/, viewSettings],
+  [/^#\/help$/, viewHelp, true],
 ];
 
 async function route() {
@@ -150,6 +151,7 @@ async function viewSetup() {
        <p class="tiny muted">Chưa có danh mục địa điểm — có thể nhập đủ danh sách sau ở Danh mục → Địa điểm.</p>`}
         <button class="btn btn-primary btn-block">${u ? 'Lưu' : 'Bắt đầu kiểm kê'}</button>
       </form>
+      <p><a href="#/help">📖 Hướng dẫn cài đặt &amp; nạp dữ liệu</a></p>
       <p class="tiny muted">${esc(CONFIG.company)} · v${CONFIG.version}</p>
     </div>
   </div>`;
@@ -210,6 +212,7 @@ async function viewHome() {
       <div class="kpi"><span>Chi nhánh</span><b>${new Set(sessions.map((s) => s.location)).size}</b></div>
       <div class="kpi"><span>Tổng lượt quét</span><b>${fmt(scans)}</b></div>
     </section>
+    ${m.items.length ? '' : `<div class="banner">📦 <b>Chưa có danh mục hàng hóa</b> — app chưa gợi ý được mã khi quét. Vào <a href="#/admin/items">Danh mục → Hàng hóa → Nhập Excel</a> hoặc xem <a href="#/help">hướng dẫn nạp dữ liệu</a>.</div>`}
     <div class="toolbar">
       <input id="q" placeholder="Tìm theo tên đợt…" value="${esc(f.q)}">
       <select id="loc"><option value="">Tất cả địa điểm</option>${locOptions(m.locations.filter((l) => sessions.some((x) => x.location === l.code)), f.loc)}</select>
@@ -874,6 +877,8 @@ async function viewAdmin(tab = 'items') {
     <div class="toolbar">
       <input id="q" placeholder="Tìm…">
       <button class="btn" id="add">＋ Thêm dòng</button>
+      ${tab !== 'users' ? '<button class="btn btn-danger-ghost" id="clearAll">🗑 Xóa hết</button>' : ''}
+      ${tab === 'items' ? '<button class="btn" id="tplItems">⬇ File mẫu</button>' : ''}
       <label class="btn">⬆ Nhập Excel<input type="file" id="imp" accept=".xlsx,.xls,.csv" hidden></label>
       <button class="btn" id="exp">⬇ Xuất Excel</button>
       ${tab === 'staff' ? '<button class="btn" id="sheetSync">⟳ Đồng bộ Google Sheet</button>' : ''}
@@ -917,6 +922,24 @@ async function viewAdmin(tab = 'items') {
   });
   $('#pager').onclick = (e) => { const b = e.target.closest('[data-p]'); if (b) { page += +b.dataset.p; draw(); } };
   $('#q').addEventListener('input', debounce((e) => { q = e.target.value; page = 0; draw(); }, 150));
+  $('#clearAll')?.addEventListener('click', async () => {
+    if (!rows.length) return toast('Danh mục đang trống');
+    if (!await confirmBox(`Xóa hết ${def.title.toLowerCase()}`, `Xóa toàn bộ ${fmt(rows.length)} dòng khỏi danh mục trên máy này? Các đợt kiểm kê đã có không bị ảnh hưởng. Có thể nhập lại bằng Excel.`, 'Xóa hết', true)) return;
+    try {
+      await Store.saveTable(tab, []);
+      if (tab === 'items') await Store.saveTable('aliases', []); // mã tem đã học gắn với mã hàng cũ
+      rows = []; dirty = false; page = 0; draw();
+      toast('Đã xóa hết danh mục', 'ok');
+    } catch (e) { toast(e.message, 'error'); }
+  });
+  $('#tplItems')?.addEventListener('click', () => {
+    try {
+      exportTable('Mau_danh_muc_hang_hoa', ['Mã hàng', 'Tên hàng', 'ĐVT', 'Nhóm hàng', 'Đơn giá', 'Mã vạch / mã phụ'], [
+        { 'Mã hàng': 'ABC-001', 'Tên hàng': 'Bo mạch điều khiển máy chạy bộ', 'ĐVT': 'Cái', 'Nhóm hàng': 'Máy chạy bộ', 'Đơn giá': 1250000, 'Mã vạch / mã phụ': '' },
+        { 'Mã hàng': 'GHE-X10', 'Tên hàng': 'Ghế massage toàn thân, model: X10', 'ĐVT': 'Cái', 'Nhóm hàng': 'Ghế massage', 'Đơn giá': 45000000, 'Mã vạch / mã phụ': '' },
+      ]);
+    } catch (e) { toast(e.message, 'error'); }
+  });
   $('#add').onclick = () => {
     const r = Object.fromEntries(def.cols.map(([k, , t]) => [k, t === 'bool' ? true : t === 'role' ? 'staff' : '']));
     rows.unshift(r); q = ''; $('#q').value = ''; page = 0; dirty = true; draw();
@@ -1009,6 +1032,60 @@ async function viewAdmin(tab = 'items') {
   draw();
 }
 
+/* ================= Hướng dẫn cài đặt & nạp dữ liệu ================= */
+function viewHelp() {
+  const url = location.href.split('#')[0];
+  const body = `
+  <div class="help">
+    <section class="card">
+      <h2>1. Cài đặt (1 phút, không cần cài phần mềm)</h2>
+      <ol>
+        <li>Mở đường link app bằng <b>Safari</b> (iPhone) hoặc <b>Chrome</b> (Android, máy tính):<br><code class="copy">${esc(url)}</code></li>
+        <li><b>iPhone:</b> bấm nút Chia sẻ → <b>Thêm vào MH chính</b>. <b>Android:</b> menu ⋮ → <b>Thêm vào màn hình chính</b>. <i>(Bắt buộc trên iPhone để dữ liệu không bị tự xóa sau 7 ngày.)</i></li>
+        <li>Mở app từ biểu tượng vừa tạo → nhập <b>Họ tên</b> và <b>Kho / cửa hàng</b> → Bắt đầu.</li>
+        <li>Lần đầu cần có mạng (tải ~15MB). Sau đó app <b>chạy được khi mất mạng</b>.</li>
+        <li>Khi bật camera, chọn <b>Cho phép</b>. Lỡ chặn: iPhone vào Cài đặt → Safari → Camera; Chrome bấm 🔒 cạnh thanh địa chỉ → Camera → Cho phép.</li>
+      </ol>
+    </section>
+    <section class="card">
+      <h2>2. Nạp dữ liệu nguồn (làm 1 lần trên mỗi máy)</h2>
+      <p class="muted">Vào <b>Danh mục</b> → chọn tab → <b>⬆ Nhập Excel</b> → kiểm tra → <b>💾 Lưu</b>. Dòng đầu file là tiêu đề cột; app tự nhận tên cột tương đương (tiếng Việt hoặc tiếng Anh từ phần mềm ERP).</p>
+      <div class="table-wrap"><table class="tbl">
+        <thead><tr><th>Tab</th><th>Cột bắt buộc</th><th>Cột nên có</th><th>Dùng để</th></tr></thead>
+        <tbody>
+          <tr><td><b>Hàng hóa</b></td><td>Mã hàng, Tên hàng</td><td>ĐVT, Đơn giá, Nhóm hàng, Mã vạch / mã phụ</td><td>Gợi ý mã khi quét tem; có đơn giá thì báo cáo tính được tiền chênh lệch</td></tr>
+          <tr><td><b>Địa điểm</b></td><td>Mã, Tên chi nhánh</td><td>Khu vực, Loại</td><td>Chọn kho khi tạo đợt; mã trùng mã kho trong file tồn để app tự chọn đúng kho</td></tr>
+          <tr><td><b>Nhân sự</b></td><td>Mã NV, Họ tên</td><td>Chi nhánh, Vị trí</td><td>Chọn người kiểm (vẫn gõ tay được); hoặc bấm ⟳ Đồng bộ Google Sheet</td></tr>
+        </tbody></table></div>
+      <p>Tên cột tương đương được nhận: <i>Mã hàng = Mã SP = Product No. = Item No.</i>; <i>Tên hàng = Description</i>; <i>Đơn giá = Unit Price</i>; <i>ĐVT = Unit of Measure</i>. Mã trùng chỉ lấy dòng đầu.</p>
+      <div class="row-btns"><a class="btn btn-primary" href="#/admin/items">Mở Danh mục hàng hóa</a><span class="muted tiny">Có nút <b>⬇ File mẫu</b> và <b>🗑 Xóa hết</b> trong trang Danh mục</span></div>
+    </section>
+    <section class="card">
+      <h2>3. Kiểm kê</h2>
+      <ol>
+        <li><b>Tạo đợt</b> → chọn kho, ngày, người tham gia. File tồn kho <b>không bắt buộc</b> — có thể nạp sau.</li>
+        <li><b>📷 Quét</b>: đưa dòng <i>tên sản phẩm + mã</i> trên tem vào khung → <b>Chụp &amp; nhận diện</b> → chọn đúng mã → <b>Ghi nhận</b>. Tem in mã khác phần mềm: chọn đúng 1 lần, app <b>ghi nhớ</b> cho lần sau.</li>
+        <li>Mã chưa có trong danh mục: bấm <b>＋ Thêm mã mới</b> (mã, tên, số lượng).</li>
+        <li>Có tem serial: app tự đọc và cảnh báo nếu quét trùng.</li>
+      </ol>
+    </section>
+    <section class="card">
+      <h2>4. Đối chiếu &amp; báo cáo</h2>
+      <ol>
+        <li>Mở <b>📊 Báo cáo</b> của đợt → <b>📥 Nạp file tồn kho</b> (cột Mã hàng + Số lượng; báo cáo tồn kho xuất từ ERP dùng được ngay).</li>
+        <li>Xem Khớp / Thiếu / Thừa / Chưa kiểm, bảng <b>Theo nhóm hàng</b> → <b>⬇ Xuất Excel</b> gửi quản lý.</li>
+        <li><b>✔ Chốt kiểm kê</b> khi xong.</li>
+      </ol>
+    </section>
+    <section class="card">
+      <h2>5. Sao lưu &amp; chuyển máy</h2>
+      <p>Dữ liệu chỉ nằm trên máy đang dùng. Sau mỗi đợt: <b>Cài đặt → ⬇ Sao lưu ra file</b> (gửi Zalo/email cho chính mình). Đổi máy: <b>⬆ Khôi phục từ file</b>. Xóa lịch sử trình duyệt = mất dữ liệu chưa sao lưu.</p>
+    </section>
+  </div>`;
+  app.innerHTML = Store.user ? shell('settings', 'Hướng dẫn cài đặt & nạp dữ liệu', body)
+    : `<main class="page"><div class="count-head"><a href="#/" class="icon-btn">←</a><h1>Hướng dẫn cài đặt &amp; nạp dữ liệu</h1></div>${body}</main>`;
+}
+
 /* ================= Cài đặt ================= */
 function viewSettings() {
   const t = getTheme();
@@ -1051,6 +1128,7 @@ function viewSettings() {
       ${Store.queue().length ? `<p class="warn-text">Còn ${Store.queue().length} lượt quét chưa đồng bộ.</p><button class="btn" id="flush">Đồng bộ ngay</button>` : ''}
     </details>
     <section class="card">
+      <a class="btn btn-block" href="#/help" style="margin-bottom:12px">📖 Hướng dẫn cài đặt &amp; nạp dữ liệu</a>
       <h2>Mẹo dùng camera trên iPhone</h2>
       <ul class="tips">
         <li>Mở bằng <b>Safari</b>, bấm Chia sẻ → <b>Thêm vào MH chính</b> để dùng như app.</li>
