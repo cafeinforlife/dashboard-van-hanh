@@ -111,6 +111,7 @@ label > input, label > select, label > textarea, label > .stepper { margin-top: 
 .logo-move { height: 24px; }
 :root[data-theme="dark"] .logo-move { filter: invert(1); } /* MOVE bảng âm: logo trắng trên nền tối */
 :root:not([data-theme="dark"]) .only-dark, :root[data-theme="dark"] .only-light { display: none; }
+.brand-txt { font-weight: 800; color: var(--primary); font-size: 1.05rem; }
 .logo-dd { height: 30px; }
 .cat { display: inline-block; width: 1.25em; height: 1.25em; margin-right: 6px; vertical-align: -0.28em; background: var(--primary);
   -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat; }

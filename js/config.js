@@ -16,6 +16,7 @@ export const CONFIG = {
     dongduong: 'assets/logo-dongduong.svg',          // công ty mẹ
     dongduongIcon: 'assets/logo-dongduong-icon.svg',
   },
+  logoNames: { parent: 'Tập đoàn Đông Dương', brand: 'Kingsport', second: 'Xe điện MOVE' },
 
   // Thứ tự khu vực trong danh sách địa điểm (khu vực phụ trách lên đầu)
   regionOrder: ['Đông Nam Bộ', 'TP.HCM', 'Tây Nguyên', 'Nam Trung Bộ', 'ĐB Sông Cửu Long', 'Miền Trung', 'Bắc Trung Bộ', 'Miền Bắc'],
