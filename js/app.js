@@ -854,6 +854,13 @@ async function viewReport(id) {
 }
 
 /* ================= Danh mục (quản trị) ================= */
+// Tên cột tương đương khi nhập Excel danh mục (không dấu, thứ tự = ưu tiên)
+const IMPORT_ALIASES = {
+  locations: { code: ['ma kho', 'ma dia diem', 'ma cua hang', 'location code', 'ma'], name: ['ten kho', 'ten chi nhanh', 'ten cua hang', 'ten dia diem', 'ten'],
+    type: ['loai', 'type'], region: ['khu vuc', 'vung', 'mien', 'region'], address: ['dia chi', 'address'], manager: ['phu trach', 'quan ly'] },
+  staff: { code: ['ma nv', 'ma nhan vien', 'msnv', 'ma'], name: ['ho va ten', 'ho ten', 'ten nhan vien', 'ten'], branch: ['chi nhanh'],
+    dept: ['bo phan', 'phong ban'], title: ['vi tri', 'chuc danh', 'chuc vu'], phone: ['sdt', 'so dien thoai', 'dien thoai'] },
+};
 const ADMIN = {
   locations: { title: 'Địa điểm', key: 'code', cols: [['code', 'Code'], ['name', 'Name'], ['type', 'Loại'], ['branch', 'Mã chi nhánh'], ['region', 'Khu vực · Chi nhánh'], ['address', 'Địa chỉ'], ['manager', 'Phụ trách'], ['active', 'Hoạt động', 'bool']] },
   items: { title: 'Hàng hóa / linh kiện', key: 'sku', cols: [['sku', 'Mã hàng'], ['name', 'Tên hàng'], ['unit', 'ĐVT'], ['category', 'Nhóm hàng'], ['price', 'Đơn giá', 'num'], ['barcode', 'Mã vạch / mã phụ'], ['alias', 'Mã khác (cách nhau dấu ,)']] },
@@ -991,7 +998,8 @@ async function viewAdmin(tab = 'items') {
     if (!file) return;
     try {
       const raw = await readSheet(file);
-      const aliases = Object.fromEntries(def.cols.map(([k, l]) => [k, [fold(l).replace(/[^a-z0-9 ]/g, '').trim(), k, ...(tab === 'items' ? CONFIG.template.aliases[k] || [] : [])]]));
+      const extra = tab === 'items' ? CONFIG.template.aliases : IMPORT_ALIASES[tab] || {};
+      const aliases = Object.fromEntries(def.cols.map(([k, l]) => [k, [fold(l).replace(/[^a-z0-9 ]/g, '').trim(), k, ...(extra[k] || [])]]));
       const { headerRow, map } = detectColumns(raw, aliases);
       if (map[def.key] == null) throw new Error(`Không thấy cột "${def.cols[0][1]}"`);
       let added = 0, updated = 0, dupes = 0;
