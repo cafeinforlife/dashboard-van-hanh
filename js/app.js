@@ -13,11 +13,11 @@ let cleanup = null;
 /* ================= Khung giao diện ================= */
 // Logo trống trong CONFIG.logos thì bỏ qua (bản chia sẻ không có logo thương hiệu)
 const L = CONFIG.logos, LN = CONFIG.logoNames || {};
-const logos = ({ parent = true } = {}) => [
+const logos = ({ parent = true, fallback = true } = {}) => [
   parent && L.dongduongIcon && `<img src="${L.dongduongIcon}" alt="${esc(LN.parent)}" title="${esc(LN.parent)}" class="logo logo-dd">`,
   L.kingsport && `<img src="${L.kingsport}" alt="${esc(LN.brand)}" class="logo ${L.kingsportDark ? 'only-light' : ''}">${L.kingsportDark ? `<img src="${L.kingsportDark}" alt="${esc(LN.brand)}" class="logo only-dark">` : ''}`,
   L.move && `<img src="${L.move}" alt="${esc(LN.second)}" class="logo logo-move">`,
-].filter(Boolean).join('<span class="logo-sep"></span>') || `<b class="brand-txt">${esc(CONFIG.appName)}</b>`;
+].filter(Boolean).join('<span class="logo-sep"></span>') || (fallback ? `<b class="brand-txt">${esc(CONFIG.appName)}</b>` : '');
 const parentLogo = () => (L.dongduong ? `<img src="${L.dongduong}" alt="${esc(LN.parent)}" class="login-parent">` : '');
 
 // Bộ icon nét mảnh (thay ký tự ▦ ☰ ⚙ ◐ hiển thị không đều trên iPhone)
@@ -138,7 +138,7 @@ async function viewSetup() {
   <div class="login">
     <div class="login-card">
       ${parentLogo()}
-      <div class="login-logos">${logos({ parent: false })}</div>
+      <div class="login-logos">${logos({ parent: false, fallback: false })}</div>
       <h1>${esc(CONFIG.appName)}</h1>
       <p class="muted">Bản cá nhân — dùng ngay, không cần tài khoản. Dữ liệu lưu trên máy này, chạy được cả khi mất mạng.</p>
       <form id="f">
@@ -172,7 +172,7 @@ function viewLogin() {
   <div class="login">
     <div class="login-card">
       ${parentLogo()}
-      <div class="login-logos">${logos({ parent: false })}</div>
+      <div class="login-logos">${logos({ parent: false, fallback: false })}</div>
       <div class="cat-strip">${CONFIG.categories.map((c) => catIcon('', c.key)).join('')}</div>
       <h1>${esc(CONFIG.appName)}</h1>
       <p class="muted">Kiểm kê linh kiện tại chi nhánh bằng camera</p>
