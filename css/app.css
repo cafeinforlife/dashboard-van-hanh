@@ -317,7 +317,14 @@ details.card:not([open]) > summary { margin-bottom: 0; }
   .bottomnav a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 6px; color: var(--muted); font-size: .7rem; }
   .bottomnav i { font-style: normal; font-size: 1.2rem; display: grid; place-items: center; height: 24px; }
   /* Nút quét luôn trong tầm ngón cái: dính ngay trên thanh menu dưới */
-  #tab-scan .scan-actions { position: sticky; bottom: calc(58px + var(--safe-b)); z-index: 5; background: var(--bg); margin: 8px -16px 0; padding: 8px 16px; border-top: 1px solid var(--line); }
+  /* Màn quét: tiêu đề → tab → CAMERA → nút quét → người kiểm; tiến độ xuống dưới */
+  .count-wrap { display: flex; flex-direction: column; }
+  .count-wrap.scan-mode > .count-head { order: -3; }
+  .count-wrap.scan-mode > .tabs { order: -2; margin-bottom: 8px; }
+  .count-wrap.scan-mode > #tab-scan { order: -1; }
+  .count-wrap.scan-mode > .progress { margin-top: 8px; }
+  .count-head h1 { font-size: 1rem; }
+  .camera { max-height: 42dvh; }
   .bottomnav a.on { color: var(--primary); }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .toolbar select { flex: 1 1 45%; }

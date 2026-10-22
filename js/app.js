@@ -406,6 +406,7 @@ async function viewCount(id) {
   const gotOf = (sku) => counts.filter((c) => c.sku === sku).reduce((a, c) => a + num(c.qty), 0);
 
   app.innerHTML = shell('home', '', `
+  <div class="count-wrap scan-mode" id="cw">
   <div class="count-head">
     <a href="#/" class="icon-btn" title="Quay lại">←</a>
     <div class="grow"><h1>${esc(session.name)}</h1><small class="muted">${esc(locName(m, session.location))} · ${esc(session.date)}</small></div>
@@ -418,11 +419,6 @@ async function viewCount(id) {
     <button data-t="scan" class="on">📷 Quét</button><button data-t="list">📋 Danh sách</button><button data-t="log">🕘 Đã quét</button>
   </div>
   <section id="tab-scan" class="tab">
-    <div class="scan-opts">
-      <label>Người kiểm<input id="staff" list="staffList" value="${esc(st.staff)}" placeholder="Chọn hoặc gõ tên" autocomplete="off">
-        <datalist id="staffList">${[...new Set([...team, ...m.staff.filter(active).map((s) => s.name)])].map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
-      <label>SL mặc định<input id="defQty" type="number" inputmode="decimal" min="0" step="any" value="1"></label>
-    </div>
     <div class="camera" id="cam">
       <video id="video" playsinline muted autoplay></video>
       <div class="guide"><span></span><em id="camMsg">Đưa mã hàng vào khung</em></div>
@@ -435,6 +431,11 @@ async function viewCount(id) {
       <button class="btn btn-primary btn-lg grow" id="shot" ${closed ? 'disabled' : ''}>◉ Chụp &amp; nhận diện</button>
       <button class="btn" id="manual" ${closed ? 'disabled' : ''}>⌨ Nhập</button>
     </div>
+    <div class="scan-opts">
+      <label>Người kiểm<input id="staff" list="staffList" value="${esc(st.staff)}" placeholder="Chọn hoặc gõ tên" autocomplete="off">
+        <datalist id="staffList">${[...new Set([...team, ...m.staff.filter(active).map((s) => s.name)])].map((n) => `<option value="${esc(n)}">`).join('')}</datalist></label>
+      <label>SL mặc định<input id="defQty" type="number" inputmode="decimal" min="0" step="any" value="1"></label>
+    </div>
     <div id="ocrOut" class="ocr-out"></div>
   </section>
   <section id="tab-list" class="tab" hidden>
@@ -442,7 +443,8 @@ async function viewCount(id) {
       <div class="seg" id="lf"><button data-f="todo" class="on">Chưa đủ</button><button data-f="all">Tất cả</button><button data-f="done">Đã đủ</button></div></div>
     <div id="lst"></div>
   </section>
-  <section id="tab-log" class="tab" hidden><div id="log"></div></section>`);
+  <section id="tab-log" class="tab" hidden><div id="log"></div></section>
+  </div>`);
 
   const cam = new Camera($('#video'));
   let timer = null;
@@ -685,6 +687,7 @@ async function viewCount(id) {
   $('#tabs').onclick = (e) => {
     const b = e.target.closest('[data-t]'); if (!b) return;
     st.tab = b.dataset.t;
+    $('#cw').classList.toggle('scan-mode', st.tab === 'scan');
     $$('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
     ['scan', 'list', 'log'].forEach((t) => { $('#tab-' + t).hidden = t !== st.tab; });
     if (st.tab !== 'scan') { st.auto = false; $('#auto').checked = false; }
