@@ -144,15 +144,24 @@ async function viewSetup() {
       <form id="f">
         <label>Họ tên người kiểm kê<input name="n" required value="${esc(u?.fullname || '')}" placeholder="VD: Nguyễn Văn A" list="setupStaff" autocomplete="name">
           <datalist id="setupStaff">${m.staff.filter(active).map((s) => `<option value="${esc(s.name)}">`).join('')}</datalist></label>
-        <label>Kho / cửa hàng của bạn<select name="l" required><option value="">— chọn —</option>${locOptions(m.locations.filter(active), u?.location)}</select></label>
+        ${m.locations.length
+    ? `<label>Kho / cửa hàng của bạn<select name="l" required><option value="">— chọn —</option>${locOptions(m.locations.filter(active), u?.location)}</select></label>`
+    : `<label>Tên kho / cửa hàng của bạn<input name="lnew" required placeholder="VD: Kho Biên Hòa"></label>
+       <p class="tiny muted">Chưa có danh mục địa điểm — có thể nhập đủ danh sách sau ở Danh mục → Địa điểm.</p>`}
         <button class="btn btn-primary btn-block">${u ? 'Lưu' : 'Bắt đầu kiểm kê'}</button>
       </form>
       <p class="tiny muted">${esc(CONFIG.company)} · v${CONFIG.version}</p>
     </div>
   </div>`;
-  $('#f').addEventListener('submit', (e) => {
+  $('#f').addEventListener('submit', async (e) => {
     e.preventDefault();
-    Store.loginLocal(e.target.n.value, e.target.l.value);
+    let code = e.target.l?.value;
+    if (!code) { // chưa có danh mục địa điểm: tạo địa điểm từ tên vừa gõ
+      const name = e.target.lnew.value.trim();
+      code = fold(name).replace(/[^a-z0-9]+/g, '').toUpperCase().slice(0, 12) || 'KHO01';
+      await Store.saveTable('locations', [{ code, name, type: 'Kho', branch: '', region: '', address: '', manager: '', active: true }]);
+    }
+    Store.loginLocal(e.target.n.value, code);
     location.hash = '#/';
   });
 }
